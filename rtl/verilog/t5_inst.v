@@ -26,20 +26,17 @@ module t5_inst(/*AUTOARG*/
    output [XLEN-1:0] pc;   
    output [XLEN-1:2] iadr;
    input [XLEN-1:0]  idat;   
-
-   input [XLEN-1:2] alu,
-		    npc;   
+   
+   input [XLEN-1:2]  alu,
+		     npc;   
    
    input 	     bra,
 		     clk, 
 		     ena, 
 		     rst;
-        
-   reg [XLEN-1:2]    iadr;
-   reg [1:0] 	     hart;   
-   reg [XLEN-1:0]    pc;   
-
+   
    // HART SWITCHER
+   reg [1:0] 	     hart;      
    always @(posedge clk)
      if (rst)
        /*AUTORESET*/
@@ -47,9 +44,10 @@ module t5_inst(/*AUTOARG*/
        hart <= 2'h0;
        // End of automatics
      else if (ena)
-       hart <= {hart[0],~hart[1]};   
+       hart <= {hart[0],~hart[1]}; // johnson counter to simplify resource usage
    
    // PC REGISTER
+   reg [XLEN-1:0]    pc;   
    always @(posedge clk)
      if (rst)
        /*AUTORESET*/
@@ -57,9 +55,10 @@ module t5_inst(/*AUTOARG*/
        pc <= {XLEN{1'b0}};
        // End of automatics
      else if (ena)
-       pc <= {iadr, hart};   
-   
+       pc <= {iadr, hart};
+
    // FETCH ADDRESS
+   reg [XLEN-1:2]    iadr;
    always @(posedge clk)
      if (rst)
        /*AUTORESET*/
@@ -70,6 +69,6 @@ module t5_inst(/*AUTOARG*/
        case (bra)
 	 1'b1: iadr <= alu;
 	 default: iadr <= npc;	   
-       endcase // case (bra)     
+       endcase // case (bra)          
    
 endmodule // t5_inst
