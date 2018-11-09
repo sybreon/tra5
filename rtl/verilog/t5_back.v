@@ -63,39 +63,45 @@ module t5_back(/*AUTOARG*/
 
    // MEMORY EXTENSION
    reg [XLEN-1:0]    dext;
-   always @(/*AUTOSENSE*/dwb_dti or xfn3 or xsel) begin
-      case (xsel)
-	4'h1: begin
-	   dext[7:0] <= dwb_dti[7:0];
-	   dext[XLEN-1:8] <= (xfn3[14]) ? 24'd0 : {24{dwb_dti[7]}};	   
-	end
-	4'h2: begin
-	   dext[7:0] <= dwb_dti[15:8];
-	   dext[XLEN-1:8] <= (xfn3[14]) ? 24'd0 : {24{dwb_dti[15]}};	   
-	end
-	4'h4: begin
-	   dext[7:0] <= dwb_dti[23:16];
-	   dext[XLEN-1:8] <= (xfn3[14]) ? 24'd0 : {24{dwb_dti[23]}};	   
-	end
-	4'h8: begin
-	   dext[7:0] <= dwb_dti[31:24];
-	   dext[XLEN-1:8] <= (xfn3[14]) ? 24'd0 : {24{dwb_dti[31]}};	   
-	end
-	4'h3: begin
-	   dext[15:0] <= dwb_dti[15:0];
-	   dext[XLEN-1:16] <= (xfn3[14]) ? 16'd0 : {16{dwb_dti[15]}}; 
-	end
-	4'hC: begin
-	   dext[15:0] <= dwb_dti[31:16];
-	   dext[XLEN-1:16] <= (xfn3[14]) ? 16'd0 : {16{dwb_dti[31]}}; 
-	end
-	4'hF: begin
-	   dext <= dwb_dti;	   
-	end
-	default: dext <= 32'hX;	
-      endcase // case (xsel)      
-   end
-   
+   always @(posedge sclk)
+     if (srst) begin
+	/*AUTORESET*/
+	// Beginning of autoreset for uninitialized flops
+	dext <= {XLEN{1'b0}};
+	// End of automatics
+     end else if (sena) begin
+	case (xsel)
+	  4'h1: begin
+	     dext[7:0] <= dwb_dti[7:0];
+	     dext[XLEN-1:8] <= (xfn3[14]) ? 24'd0 : {24{dwb_dti[7]}};	   
+	  end
+	  4'h2: begin
+	     dext[7:0] <= dwb_dti[15:8];
+	     dext[XLEN-1:8] <= (xfn3[14]) ? 24'd0 : {24{dwb_dti[15]}};	   
+	  end
+	  4'h4: begin
+	     dext[7:0] <= dwb_dti[23:16];
+	     dext[XLEN-1:8] <= (xfn3[14]) ? 24'd0 : {24{dwb_dti[23]}};	   
+	  end
+	  4'h8: begin
+	     dext[7:0] <= dwb_dti[31:24];
+	     dext[XLEN-1:8] <= (xfn3[14]) ? 24'd0 : {24{dwb_dti[31]}};	   
+	  end
+	  4'h3: begin
+	     dext[15:0] <= dwb_dti[15:0];
+	     dext[XLEN-1:16] <= (xfn3[14]) ? 16'd0 : {16{dwb_dti[15]}}; 
+	  end
+	  4'hC: begin
+	     dext[15:0] <= dwb_dti[31:16];
+	     dext[XLEN-1:16] <= (xfn3[14]) ? 16'd0 : {16{dwb_dti[31]}}; 
+	  end
+	  4'hF: begin
+	     dext <= dwb_dti;	   
+	  end
+	  default: dext <= 32'hX;	
+	endcase // case (xsel)      
+     end
+
    // SELECTOR
    reg [XLEN-1:0] dmux;
    assign rd0d = dmux;   

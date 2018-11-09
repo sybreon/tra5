@@ -59,7 +59,7 @@ module t5_data (/*AUTOARG*/
 	// End of automatics
      end else if (sena) begin
 	case ({dfn3[13:12],xadd[1:0]})
-	  4'h0: xsel <= 4'h0;// B0
+	  4'h0: xsel <= 4'h1;// B0
 	  4'h1: xsel <= 4'h2;// B1
 	  4'h2: xsel <= 4'h4;// B2
 	  4'h3: xsel <= 4'h8;// B3

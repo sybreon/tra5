@@ -101,13 +101,7 @@ module t5_aslu (/*AUTOARG*/
    always @(/*AUTOSENSE*/xcmp) begin
      xset <= {30'd0, xcmp};
    end
-   
-   // MOVE
-   reg [XLEN-1:0] xmov;
-   always @(/*AUTOSENSE*/dop2) begin
-      xmov <= dop2;
-   end
-   
+      
    // BRANCH
    reg 		  xbra;
    reg [1:0] 	  xlnk;
@@ -127,19 +121,22 @@ module t5_aslu (/*AUTOARG*/
    
    reg [XLEN-1:0] xbpc;
    reg [XLEN-1:0] xdat;   
+   reg [XLEN-1:0] xmov;
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
 	xbpc <= {XLEN{1'b0}};
 	xdat <= {XLEN{1'b0}};
+	xmov <= {XLEN{1'b0}};
 	// End of automatics
   end else if (sena) begin
      xbpc <= xadd;
+     xmov <= dop2;     
      case (dfn3[13:12]) 
-       2'o0: xdat <= {4{xmov[7:0]}};
-       2'o1: xdat <= {2{xmov[15:0]}};
-       2'o2: xdat <= xmov;
+       2'o0: xdat <= {4{dcp2[7:0]}};
+       2'o1: xdat <= {2{dcp2[15:0]}};
+       2'o2: xdat <= dcp2;
        default: xdat <= 32'hX;       
      endcase // case (xadd[1:0])     
   end
@@ -155,7 +152,7 @@ module t5_aslu (/*AUTOARG*/
 	// End of automatics
   end else if (sena) begin
      case ({xopc[5],xopc[4],xopc[2]})
-       3'b111: malu <= xdat; // LUI
+       3'b111: malu <= xmov; // LUI
        3'b101: malu <= {xpc[XLEN-1:2],2'd0}; // JAL/R       
        3'b011: malu <= {xbpc[XLEN-1:2],2'd0}; // AUIPC
        3'b010,3'b110: malu <= xalu; // ALU

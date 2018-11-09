@@ -32,7 +32,7 @@ module t5_sim();
       sexe = 0;
             
       #50 sys_rst = 0;      
-      #5000 $displayh("\n*** TIMEOUT ", $stime, " ***"); $finish;
+      #50000 $displayh("\n*** TIMEOUT ", $stime, " ***"); $finish;
       
    end // initial begin
    
@@ -48,8 +48,10 @@ module t5_sim();
 
    // FAKE MEMORY ////////////////////////////////////////////////////////
 
-   reg [31:0] 		rom[0:(1<<14)-1];
-   reg [31:0] 		ram[0:(1<<14)-1];   
+   reg [31:0] 		rom[0:(1<<16)-1];
+   reg [31:0] 		ram[0:(1<<20)-1];
+   
+//   wire [31:0] 		dwb_dat_t = ram[dwb_adr - 32'h401D];   
    wire [31:0] 		dwb_dat_t = ram[dwb_adr];   
    
    
@@ -62,35 +64,42 @@ module t5_sim();
 	// End of automatics
      end else begin
 	// Include a certain random element in acks.
+	if (!(dwb_stb ^ dwb_ack)) idat <= rom[iadr];	
 	dwb_ack <= dwb_stb & !dwb_ack & $random;
-	idat <= rom[iadr];	
      end // else: !if(sys_rst_i)
+
+   reg [XLEN-1:0] dwbdat;
+   always @(/*AUTOSENSE*/dwb_dat_t or dwb_dto or dwb_sel) begin
+	 case (dwb_sel)
+	   4'h1: dwbdat <= {dwb_dat_t[31:8], dwb_dto[7:0]};
+	   4'h2: dwbdat <= {dwb_dat_t[31:16], dwb_dto[15:8], dwb_dat_t[7:0]};
+	   4'h4: dwbdat <= {dwb_dat_t[31:24], dwb_dto[23:16], dwb_dat_t[15:0]};
+	   4'h8: dwbdat <= {dwb_dto[31:24], dwb_dat_t[23:0]};
+	   4'h3: dwbdat <= {dwb_dat_t[31:16], dwb_dto[15:0]};
+	   4'hC: dwbdat <= {dwb_dto[31:16], dwb_dat_t[15:0]};
+	   4'hF: dwbdat <= {dwb_dto};
+	 endcase // case (dwb_sel_o)
+   end // always @ (posedge sys_clk)
    
    always @(posedge sys_clk) begin
-      // SPECIAL PORTS
       if (dwb_wre & dwb_stb & dwb_ack) begin
-	 case (dwb_sel)
-	   4'h1: ram[dwb_adr] <= {dwb_dat_t[31:8], dwb_dto[7:0]};
-	   4'h2: ram[dwb_adr] <= {dwb_dat_t[31:16], dwb_dto[15:8], dwb_dat_t[7:0]};
-	   4'h4: ram[dwb_adr] <= {dwb_dat_t[31:24], dwb_dto[23:16], dwb_dat_t[15:0]};
-	   4'h8: ram[dwb_adr] <= {dwb_dto[31:24], dwb_dat_t[23:0]};
-	   4'h3: ram[dwb_adr] <= {dwb_dat_t[31:16], dwb_dto[15:0]};
-	   4'hC: ram[dwb_adr] <= {dwb_dto[31:16], dwb_dat_t[15:0]};
-	   4'hF: ram[dwb_adr] <= {dwb_dto};
-	   default: begin
-	      $displayh("*** ERROR WRITE @",{dwb_adr, 2'd0}, " ***");
-	      //$finish;	      
-	   end
-	 endcase // case (dwb_sel_o)
-      end // if (dwb_wre_o & dwb_stb_o & dwb_ack_i)
-      
-      if (dwb_stb & !dwb_wre) begin
+//	 ram[dwb_adr - 32'h401D] <= dwbdat;	 
+	 ram[dwb_adr] <= dwbdat;	 
+	 $displayh("WRITE @",{dwb_adr, 2'd0}, " = ", dwbdat);
+      end
+   end
+   
+   always @(posedge sys_clk) begin
+      if (dwb_stb) begin
+//	 dwb_dti <= ram[dwb_adr - 32'h401D];     
+	 dwb_dti <= ram[dwb_adr];
+      end
+      if (dwb_stb & !dwb_wre & dwb_ack) begin
 	 case (dwb_sel)
 	   4'h1,4'h2,4'h4,4'h8,4'h3,4'hC,4'hF: begin
-	      dwb_dti <= ram[dwb_adr];		
+	      $displayh("READ  @",{dwb_adr,2'd0}, " = ", dwb_dti);	      
 	   end // case: 4'h1,4'h2,4'h4,4'h8,4'h3,4'hC,4'hF
 	   default: begin // Wrong Select bits
-	      dwb_dti <= 32'hX;	      
 	      $displayh("*** ERROR READ  @",{dwb_adr,2'd0}, " ***");	      
 	      //$finish;	      
 	   end	   
@@ -101,7 +110,7 @@ module t5_sim();
    
    integer i;   
    initial begin
-      for (i=0;i<(1<<14)-1;i=i+1) begin
+      for (i=0;i<(1<<20)-1;i=i+1) begin
 	 ram[i] <= $random;
       end
       #1 $readmemh("dump.vmem",rom);

@@ -49,7 +49,7 @@ module t5_ctrl (/*AUTOARG*/
    wire 	     utype = (opc[4] & opc[2]); //(opc[6:2] == 5'b01101 | opc[6:2] == 5'b00101);
    wire 	     jtype = (opc[6:2] == 5'b11011);
    wire 	     itype = (opc[6:2] == 5'b11001 | (!opc[6] & !opc[5] & !opc[2]));   
-   wire 	     rtype = (opc[6:4] == 3'b011);
+   wire 	     rtype = !opc[6] & opc[5] & opc[4] & !opc[2];
    wire 	     rv32 = ireg[1] & ireg[0];
 	     
    // RS DECODER
