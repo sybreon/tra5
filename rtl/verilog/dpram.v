@@ -41,7 +41,7 @@ module dpram (/*AUTOARG*/
    initial begin
       for (i=0; i<(1<<AW); i=i+1) 
 	begin
-	   rRAM[i] <= {(DW){1'b0}};
+	   rRAM[i] <= 32'd0;
 	end
    end
    // synopsys translate_on
