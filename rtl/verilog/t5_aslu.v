@@ -57,7 +57,7 @@ module t5_aslu (/*AUTOARG*/
    // ADDER
    reg [XLEN-1:0]    xadd;
    always @(/*AUTOSENSE*/dfn7 or dop1 or dop2 or dopc)
-     xadd <= (dfn7[30] & !dopc[6] & dopc[4] & !dopc[2]) ? dop1 - dop2 : // SUB
+     xadd <= (dfn7[30] & !dopc[6] & dopc[5] & dopc[4]) ? dop1 - dop2 : // SUB
 	     dop1 + dop2; // ADD
 
    // LOGIC
@@ -85,21 +85,21 @@ module t5_aslu (/*AUTOARG*/
    reg xcmp;
    always @(/*AUTOSENSE*/dcp1 or dcp2 or dfn3 or dop1 or dop2)
      case (dfn3)
-       3'b000: xcmp = (dcp1 == dcp2); // BE
-       3'b001: xcmp = !(dcp1 == dcp2); // BNE
-       3'b010: xcmp = (dop1 < dop2); // SLT
-       3'b011: xcmp = (dop1 < dop2); // SLTU
-       3'b100: xcmp = (dcp1 < dcp2); // BLT
-       3'b101: xcmp = !(dcp1 < dcp2); // BGE 
-       3'b110: xcmp = (dcp1 < dcp2); // BLTU
-       3'b111: xcmp = !(dcp1 < dcp2); // BGEU 
-       // TODO: Unsigned compare
+       3'o0: xcmp = (dcp1 == dcp2); // BE
+       3'o1: xcmp = !(dcp1 == dcp2); // BNE
+       3'o2: xcmp = (dop1 < dop2); // SLT
+       3'o3: xcmp = (dop1 < dop2); // SLTU
+       3'o4: xcmp = (dcp1 < dcp2); // BLT
+       3'o5: xcmp = !(dcp1 < dcp2); // BGE 
+       3'o6: xcmp = (dcp1 < dcp2); // BLTU
+       3'o7: xcmp = !(dcp1 < dcp2); // BGEU
+       // FIXME: Unsigned operations
        default: xcmp = 1'bX;       
      endcase // case (dfn3)
 
    reg [XLEN-1:0] xset;
    always @(/*AUTOSENSE*/xcmp) begin
-     xset <= {30'd0, xcmp};
+     xset <= {{(XLEN-1){1'b0}}, xcmp};
    end
       
    // BRANCH
