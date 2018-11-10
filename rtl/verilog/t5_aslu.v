@@ -71,12 +71,46 @@ module t5_aslu (/*AUTOARG*/
      endcase // case (dfn3)
 
    // SHIFT
-   reg [XLEN-1:0]    xshl, xshr, xsha, xshf;
+   reg [XLEN-1:0]    xshf;
    always @(/*AUTOSENSE*/dfn3 or dfn7 or dop1 or dop2) begin
       case ({dfn3[14],dfn7[30]})
 	2'b00: xshf <= dop1 << dop2[4:0]; // SLL
 	2'b10: xshf <= dop1 >> dop2[4:0]; // SRL
-	2'b11: xshf <= {dop1[31], dop1 >> dop2[4:0]}; // SRA
+	2'b11: case (dop2[4:0]) // SRA
+		 5'd00: xshf <= dop1;
+		 5'd01: xshf <= {{(1){dop1[31]}}, dop1[31:1]};
+		 5'd02: xshf <= {{(2){dop1[31]}}, dop1[31:2]};
+		 5'd03: xshf <= {{(3){dop1[31]}}, dop1[31:3]};
+		 5'd04: xshf <= {{(4){dop1[31]}}, dop1[31:4]};
+		 5'd05: xshf <= {{(5){dop1[31]}}, dop1[31:5]};
+		 5'd06: xshf <= {{(6){dop1[31]}}, dop1[31:6]};
+		 5'd07: xshf <= {{(7){dop1[31]}}, dop1[31:7]};
+		 5'd08: xshf <= {{(8){dop1[31]}}, dop1[31:8]};
+		 5'd09: xshf <= {{(9){dop1[31]}}, dop1[31:9]};
+		 5'd10: xshf <= {{(10){dop1[31]}}, dop1[31:10]};
+		 5'd11: xshf <= {{(11){dop1[31]}}, dop1[31:11]};
+		 5'd12: xshf <= {{(12){dop1[31]}}, dop1[31:12]};
+		 5'd13: xshf <= {{(13){dop1[31]}}, dop1[31:13]};
+		 5'd14: xshf <= {{(14){dop1[31]}}, dop1[31:14]};
+		 5'd15: xshf <= {{(15){dop1[31]}}, dop1[31:15]};
+		 5'd16: xshf <= {{(16){dop1[31]}}, dop1[31:16]};
+		 5'd17: xshf <= {{(17){dop1[31]}}, dop1[31:17]};
+		 5'd18: xshf <= {{(18){dop1[31]}}, dop1[31:18]};
+		 5'd19: xshf <= {{(19){dop1[31]}}, dop1[31:19]};
+		 5'd20: xshf <= {{(20){dop1[31]}}, dop1[31:20]};
+		 5'd21: xshf <= {{(21){dop1[31]}}, dop1[31:21]};
+		 5'd22: xshf <= {{(22){dop1[31]}}, dop1[31:22]};
+		 5'd23: xshf <= {{(23){dop1[31]}}, dop1[31:23]};
+		 5'd24: xshf <= {{(24){dop1[31]}}, dop1[31:24]};
+		 5'd25: xshf <= {{(25){dop1[31]}}, dop1[31:25]};
+		 5'd26: xshf <= {{(26){dop1[31]}}, dop1[31:26]};
+		 5'd27: xshf <= {{(27){dop1[31]}}, dop1[31:27]};
+		 5'd28: xshf <= {{(28){dop1[31]}}, dop1[31:28]};
+		 5'd29: xshf <= {{(29){dop1[31]}}, dop1[31:29]};
+		 5'd30: xshf <= {{(30){dop1[31]}}, dop1[31:30]};
+		 5'd31: xshf <= {{(31){dop1[31]}}, dop1[31]};
+	       endcase // case (dop2[4:0])
+	
 	default: xshf <= 32'hX;	
       endcase // case ({dfn3[14],dfn7[30]})      
    end
