@@ -32,7 +32,7 @@ module t5_sim();
       sexe = 0;
             
       #50 sys_rst = 0;      
-      #50000 $displayh("\n*** TIMEOUT ", $stime, " ***"); $finish;
+      #500000 $displayh("\n*** TIMEOUT ", $stime, " ***"); $finish;
       
    end // initial begin
    
@@ -50,10 +50,9 @@ module t5_sim();
 
    reg [31:0] 		rom[0:(1<<16)-1];
    reg [31:0] 		ram[0:(1<<20)-1];
-   
-//   wire [31:0] 		dwb_dat_t = ram[dwb_adr - 32'h401D];   
-   wire [31:0] 		dwb_dat_t = ram[dwb_adr];   
-   
+   wire [XLEN-1:2] 	dadr = dwb_adr;
+//(dwb_adr < 30'h401D) ? dwb_adr : dwb_adr - 30'h401D;    
+   wire [31:0] 		dwb_dat_t = ram[dadr];      
    
    always @(posedge sys_clk) 
      if (sys_rst) begin
@@ -66,6 +65,7 @@ module t5_sim();
 	// Include a certain random element in acks.
 	if (!(dwb_stb ^ dwb_ack)) idat <= rom[iadr];	
 	dwb_ack <= dwb_stb & !dwb_ack & $random;
+	$displayh("PC@", {iadr,2'o0});	
      end // else: !if(sys_rst_i)
 
    reg [XLEN-1:0] dwbdat;
@@ -83,16 +83,14 @@ module t5_sim();
    
    always @(posedge sys_clk) begin
       if (dwb_wre & dwb_stb & dwb_ack) begin
-//	 ram[dwb_adr - 32'h401D] <= dwbdat;	 
-	 ram[dwb_adr] <= dwbdat;	 
+	 ram[dadr] <= dwbdat;	 
 	 $displayh("WRITE @",{dwb_adr, 2'd0}, " = ", dwbdat);
       end
    end
    
    always @(posedge sys_clk) begin
       if (dwb_stb) begin
-//	 dwb_dti <= ram[dwb_adr - 32'h401D];     
-	 dwb_dti <= ram[dwb_adr];
+	 dwb_dti <= ram[dadr];
       end
       if (dwb_stb & !dwb_wre & dwb_ack) begin
 	 case (dwb_sel)
