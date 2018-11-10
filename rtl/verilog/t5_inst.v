@@ -61,10 +61,11 @@ module t5_inst(/*AUTOARG*/
        // Beginning of autoreset for uninitialized flops
        iadr <= {(1+(XLEN-1)-(2)){1'b0}};
        // End of automatics
-     else if (sena)
+     else if (sena) begin
        case (xbra)
 	 1'b1: iadr <= xbpc[XLEN-1:2];
 	 default: iadr <= xpc[XLEN-1:2];	   
-       endcase // case (bra)          
+       endcase // case (bra)
+     end
    
 endmodule // t5_inst

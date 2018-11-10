@@ -111,7 +111,7 @@ module t5_ctrl (/*AUTOARG*/
 	dop1 <= {XLEN{1'b0}};
 	dop2 <= {XLEN{1'b0}};
 	// End of automatics
-     end else if (sena) begin
+     end else if (sena & rv32) begin
 	dcp1 <= rs1d; // Btype
 	dcp2 <= rs2d; // Btype & Stype	
 	dop1 <= (utype | btype | jtype) ? fpc : rs1d;	
@@ -141,7 +141,6 @@ module t5_ctrl (/*AUTOARG*/
    wire [XLEN-1:2]   npc = fpc[XLEN-1:2] + 1;   
    always @(posedge sclk)
      if (srst) begin
-//	dpc <= 32'hFFFFFFFF;	
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
 	dpc <= {XLEN{1'b0}};
