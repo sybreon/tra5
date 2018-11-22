@@ -1,7 +1,7 @@
 // 32x64 = 77
 // 64x32 = 146
 
-module dpram (/*AUTOARG*/
+module dpsram (/*AUTOARG*/
    // Outputs
    dat_o, xdat_o,
    // Inputs
