@@ -16,8 +16,8 @@
 
 module t5_ctrl (/*AUTOARG*/
    // Outputs
-   dop1, dop2, dcp1, dcp2, mpc, xpc, dopc, dfn3, dfn7, rs1a, rs2a,
-   fhart,
+   dop1, dop2, dcp1, dcp2, mpc, xpc, xepc, dopc, dfn3, dfn7, sysc,
+   rs1a, rs2a, fhart,
    // Inputs
    fpc, idat, rs2d, rs1d, sclk, srst, sena, sexe
    );
@@ -25,11 +25,14 @@ module t5_ctrl (/*AUTOARG*/
    parameter XLEN = 32;
 
    output [XLEN-1:0] dop1, dop2, dcp1, dcp2;
-   output [XLEN-1:0] mpc, xpc;   
+   output [XLEN-1:0] mpc, xpc;
+   output [XLEN-1:2] xepc;   
    output [6:2]      dopc;
    output [14:12]    dfn3;
    output [31:25]    dfn7;
 
+   output 	     sysc;   
+   
    output [4:0]      rs1a, rs2a;   
    output [1:0]      fhart;
    
@@ -46,7 +49,7 @@ module t5_ctrl (/*AUTOARG*/
    // FORMAT DECODER - pg 104
    wire 	     btype = (opc[6] & !opc[4] & !opc[2]);// (opc[6:2] == 5'b11000);
    wire 	     stype = (opc[6:4] == 3'b010); //(opc[6:2] == 5'b01000);
-   wire 	     utype = (opc[4] & opc[2]); //(opc[6:2] == 5'b01101 | opc[6:2] == 5'b00101);
+   wire 	     utype = (opc[4] & (opc[2] | opc[6])); //(opc[6:2] == 5'b01101 | opc[6:2] == 5'b00101);
    wire 	     jtype = (opc[6:2] == 5'b11011);
    wire 	     itype = (opc[6:2] == 5'b11001 | (!opc[6] & !opc[5] & !opc[2]));   
    wire 	     rtype = !opc[6] & opc[5] & opc[4] & !opc[2];
@@ -122,6 +125,8 @@ module t5_ctrl (/*AUTOARG*/
    reg [14:12] dfn3;
    reg [31:25] dfn7;
    reg [6:2]   dopc;
+   reg 	       sysc;
+   
    always @(posedge sclk)
      if (srst) begin
 	dopc <= 5'h0D;	
@@ -129,15 +134,18 @@ module t5_ctrl (/*AUTOARG*/
 	// Beginning of autoreset for uninitialized flops
 	dfn3 <= 3'h0;
 	dfn7 <= 7'h0;
+	sysc <= 1'h0;
 	// End of automatics
      end else if (sena & rv32) begin
 	dopc <= ireg[6:2];
 	dfn3 <= ireg[14:12];
-	dfn7 <= ireg[31:25];	
+	dfn7 <= ireg[31:25];
+	sysc <= ~|ireg[19:7] & &ireg[6:4];	
      end
    
    // PC PIPELINE
    reg [XLEN-1:0]    dpc, xpc, mpc;
+   reg [XLEN-1:2]    xepc;   
    wire [XLEN-1:2]   npc = fpc[XLEN-1:2] + 1;   
    always @(posedge sclk)
      if (srst) begin
@@ -145,12 +153,14 @@ module t5_ctrl (/*AUTOARG*/
 	// Beginning of autoreset for uninitialized flops
 	dpc <= {XLEN{1'b0}};
 	mpc <= {XLEN{1'b0}};
+	xepc <= {(1+(XLEN-1)-(2)){1'b0}};
 	xpc <= {XLEN{1'b0}};
 	// End of automatics
      end else if (sena & rv32) begin
 	mpc <= xpc;
 	xpc <= dpc;
 	dpc <= {npc,fpc[1:0]}; // standard increment
+	xepc <= fpc[XLEN-1:2];	
      end	 
    
 endmodule // t5_ctrl

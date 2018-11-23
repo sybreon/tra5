@@ -32,13 +32,13 @@ module t5_cpu (/*AUTOARG*/
    // End of automatics
    /*AUTOINPUT*/
    // Beginning of automatic inputs (from unused autoinst inputs)
-   input		dwb_ack;		// To sysc of t5_sysc.v, ...
+   input		dwb_ack;		// To csys of t5_sysc.v, ...
    input [XLEN-1:0]	dwb_dti;		// To regs of t5_regs.v, ...
    input [XLEN-1:0]	idat;			// To back of t5_back.v, ...
    input		sexe;			// To ctrl of t5_ctrl.v
-   input		sys_clk;		// To sysc of t5_sysc.v
-   input		sys_ena;		// To sysc of t5_sysc.v
-   input		sys_rst;		// To sysc of t5_sysc.v
+   input		sys_clk;		// To csys of t5_sysc.v
+   input		sys_ena;		// To csys of t5_sysc.v
+   input		sys_rst;		// To csys of t5_sysc.v
    // End of automatics
    /*AUTOWIRE*/
    // Beginning of automatic wires (for undeclared instantiated-module outputs)
@@ -61,12 +61,14 @@ module t5_cpu (/*AUTOARG*/
    wire [XLEN-1:0]	rs1d;			// From regs of t5_regs.v
    wire [4:0]		rs2a;			// From ctrl of t5_ctrl.v
    wire [XLEN-1:0]	rs2d;			// From regs of t5_regs.v
-   wire			sclk;			// From sysc of t5_sysc.v
-   wire			sena;			// From sysc of t5_sysc.v
-   wire			srst;			// From sysc of t5_sysc.v
+   wire			sclk;			// From csys of t5_sysc.v
+   wire			sena;			// From csys of t5_sysc.v
+   wire			srst;			// From csys of t5_sysc.v
+   wire			sysc;			// From ctrl of t5_ctrl.v
    wire [XLEN-1:0]	xbpc;			// From aslu of t5_aslu.v
    wire			xbra;			// From aslu of t5_aslu.v
    wire [XLEN-1:0]	xdat;			// From aslu of t5_aslu.v
+   wire [XLEN-1:2]	xepc;			// From ctrl of t5_ctrl.v
    wire [14:12]		xfn3;			// From aslu of t5_aslu.v
    wire [6:2]		xopc;			// From aslu of t5_aslu.v
    wire [XLEN-1:0]	xpc;			// From ctrl of t5_ctrl.v
@@ -79,7 +81,7 @@ module t5_cpu (/*AUTOARG*/
    t5_sysc #(/*AUTOINSTPARAM*/
 	     // Parameters
 	     .XLEN			(XLEN))
-   sysc (/*AUTOINST*/
+   csys (/*AUTOINST*/
 	 // Outputs
 	 .sclk				(sclk),
 	 .srst				(srst),
@@ -199,6 +201,8 @@ module t5_cpu (/*AUTOARG*/
 	 .dfn7				(dfn7[31:25]),
 	 .dfn3				(dfn3[14:12]),
 	 .xpc				(xpc[XLEN-1:0]),
+	 .xepc				(xepc[XLEN-1:2]),
+	 .sysc				(sysc),
 	 .sclk				(sclk),
 	 .srst				(srst),
 	 .sena				(sena));
@@ -214,9 +218,11 @@ module t5_cpu (/*AUTOARG*/
 	 .dcp2				(dcp2[XLEN-1:0]),
 	 .mpc				(mpc[XLEN-1:0]),
 	 .xpc				(xpc[XLEN-1:0]),
+	 .xepc				(xepc[XLEN-1:2]),
 	 .dopc				(dopc[6:2]),
 	 .dfn3				(dfn3[14:12]),
 	 .dfn7				(dfn7[31:25]),
+	 .sysc				(sysc),
 	 .rs1a				(rs1a[4:0]),
 	 .rs2a				(rs2a[4:0]),
 	 .fhart				(fhart[1:0]),
