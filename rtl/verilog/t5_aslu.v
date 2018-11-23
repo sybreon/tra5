@@ -18,7 +18,8 @@ module t5_aslu (/*AUTOARG*/
    // Outputs
    malu, xbpc, xbra, xdat, xopc, xfn3,
    // Inputs
-   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, sclk, srst, sena
+   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, xepc, sysc, sclk,
+   srst, sena
    );
    parameter XLEN = 32;
 
@@ -36,12 +37,15 @@ module t5_aslu (/*AUTOARG*/
    input [31:25]     dfn7;
    input [14:12]     dfn3;
    input [XLEN-1:0]  xpc;
-   
+   input [XLEN-1:2]  xepc;
+
+   input 	     sysc;   
    input 	     sclk, srst, sena;
 
    // OPCODE PIPELINE
    reg [6:2] 	     xopc;
-   reg [14:12] 	     xfn3;   
+   reg [14:12] 	     xfn3;
+
    always @(posedge sclk)
      if (srst) begin
 	xopc <= 5'h0D;	
@@ -116,17 +120,25 @@ module t5_aslu (/*AUTOARG*/
    end
 
    // COMPARE/SET
+   wire [32:0] ssub = {1'b0,dcp2} - {1'b0,dcp1};
+   wire [32:0] usub = {dcp2[31],dcp2} - {dcp1[31],dcp1};   
+
    reg xcmp;
-   always @(/*AUTOSENSE*/dcp1 or dcp2 or dfn3 or dop1 or dop2)
+   always @(/*AUTOSENSE*/dcp1 or dcp2 or dfn3 or dop1 or dop2 or ssub
+	    or usub)
      case (dfn3)
        3'o0: xcmp = (dcp1 == dcp2); // BE
        3'o1: xcmp = !(dcp1 == dcp2); // BNE
        3'o2: xcmp = (dop1 < dop2); // SLT
        3'o3: xcmp = (dop1 < dop2); // SLTU
-       3'o4: xcmp = (dcp1 < dcp2); // BLT
-       3'o5: xcmp = !(dcp1 < dcp2); // BGE 
-       3'o6: xcmp = (dcp1 < dcp2); // BLTU
-       3'o7: xcmp = !(dcp1 < dcp2); // BGEU
+       3'o4: xcmp = ssub[32];
+       //(dcp1 < dcp2); // BLT
+       3'o5: xcmp = !ssub[32];
+       //!(dcp1 < dcp2); // BGE 
+       3'o6: xcmp = usub[32];
+       //(dcp1 < dcp2); // BLTU
+       3'o7: xcmp = !usub[32];
+       //!(dcp1 < dcp2); // BGEU
        // FIXME: Unsigned operations
        default: xcmp = 1'bX;       
      endcase // case (dfn3)
@@ -135,11 +147,66 @@ module t5_aslu (/*AUTOARG*/
    always @(/*AUTOSENSE*/xcmp) begin
      xset <= {{(XLEN-1){1'b0}}, xcmp};
    end
+
+
+   // CSR
+   localparam [11:0]
+     CSR_ECALL = 12'h000,
+     CSR_MSTATUS = 12'h300,
+     CSR_MISA = 12'h301,
+     CSR_MEDELEG = 12'h302,
+     CSR_MIDELEG = 12'h303,
+     CSR_MIE = 12'h304,
+     CSR_MTVEC = 12'h305,
+     CSR_MEPC = 12'h341,
+     CSR_MVENDORID = 12'hF11,
+     CSR_MARCHID = 12'hF12,
+     CSR_MIMPID = 12'hF13,
+     CSR_MHARTID = 12'hF14;
+   
+   reg [XLEN-1:0] xcsr;
+   reg [XLEN-1:2] mepc;
+   reg [XLEN-1:0] medeleg;   
+
+   wire 	  csr = dfn3[13] | dfn3[12];
+
+   always @(posedge sclk)
+     if (srst) begin
+	/*AUTORESET*/
+	// Beginning of autoreset for uninitialized flops
+	medeleg <= {XLEN{1'b0}};
+	mepc <= {(1+(XLEN-1)-(2)){1'b0}};
+	xcsr <= {XLEN{1'b0}};
+	// End of automatics
+     end else if (sena) begin
+	if (csr)
+	  case (dop2[31:20])
+	    CSR_MHARTID: xcsr <= {{(XLEN-2){1'b0}},dop1[1:0]};
+	    CSR_MISA: xcsr <= 32'h40000100;
+	    CSR_MEDELEG: xcsr <= medeleg;
+	    CSR_MEPC: xcsr <= {mepc, 2'd0};	  
+	    default: xcsr <= {(XLEN){1'b0}};	  
+	  endcase // case (dop2[31:20])
+
+	if (csr)
+	  case (dop2[31:20])
+	    CSR_MEPC: mepc <= dcp1[XLEN-1:2];
+	    //	  CSR_ECALL: mepc <= xepc[XLEN-1:2];
+	    default: mepc <= mepc;
+	  endcase // case (dop2[31:20])
+	
+	if (csr)
+	  case (dop2[31:20])
+	    CSR_MEDELEG: medeleg <= dcp1;
+	    default: medeleg <= medeleg;	  
+	  endcase // case (dop2[31:20])
+     end
       
    // BRANCH
    reg 		  xbra;
    reg [1:0] 	  xlnk;
 //   assign mlnk = xlnk[1];
+   //wire 	  call = ~|dfn3 & &dopc[6:4]; // system call
    
    always @(posedge sclk)
      if (srst) begin
@@ -149,7 +216,7 @@ module t5_aslu (/*AUTOARG*/
 	xlnk <= 2'h0;
 	// End of automatics
      end else if (sena) begin
-	xbra <= dopc[6] & dopc[5] & (dopc[2] | xcmp); // BRANCH
+	xbra <= sysc | (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
 	xlnk <= {xlnk[0], dopc[6] & dopc[5] & dopc[2]}; // LINK	
      end
    
@@ -165,7 +232,12 @@ module t5_aslu (/*AUTOARG*/
 	xmov <= {XLEN{1'b0}};
 	// End of automatics
   end else if (sena) begin
-     xbpc <= xadd;
+
+     case ({sysc,dop2[21]})
+       2'b11: xbpc <= {mepc,2'd0};
+       default: xbpc <= xadd;       
+     endcase // case ({sysc,dop2[21]})
+     
      xmov <= dop2;     
      case (dfn3[13:12]) 
        2'o0: xdat <= {4{dcp2[7:0]}};
@@ -185,11 +257,12 @@ module t5_aslu (/*AUTOARG*/
 	xalu <= {XLEN{1'b0}};
 	// End of automatics
   end else if (sena) begin
-     case ({xopc[5],xopc[4],xopc[2]})
-       3'b111: malu <= xmov; // LUI
-       3'b101: malu <= {xpc[XLEN-1:2],2'd0}; // JAL/R       
-       3'b011: malu <= {xbpc[XLEN-1:2],2'd0}; // AUIPC
-       3'b010,3'b110: malu <= xalu; // ALU
+     case ({xopc[6],xopc[5],xopc[4],xopc[2]})
+       4'b0111: malu <= xmov; // LUI
+       4'b1101: malu <= {xpc[XLEN-1:2],2'd0}; // JAL/R       
+       4'b0011: malu <= {xbpc[XLEN-1:2],2'd0}; // AUIPC
+       4'b0010,4'b0110: malu <= xalu; // ALU
+       4'b1110: malu <= xcsr;       
        default: malu <= 32'hX;       
      endcase // case (xopc[6:4])
      
