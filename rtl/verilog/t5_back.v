@@ -18,7 +18,7 @@ module t5_back(/*AUTOARG*/
    // Outputs
    rd0d, rd0a, mhart, mwre,
    // Inputs
-   idat, xopc, xfn3, dwb_dti, xsel, dwb_ack, xstb, xwre, mpc, malu,
+   iwb_dat, xopc, xfn3, dwb_dti, xsel, dwb_ack, xstb, xwre, mpc, malu,
    srst, sclk, sena
    );
    parameter XLEN = 32;
@@ -29,7 +29,7 @@ module t5_back(/*AUTOARG*/
    output 	     mwre;
    
 //   input 	     mlnk;
-   input [31:0]      idat;   
+   input [31:0]      iwb_dat;   
    input [6:2] 	     xopc;
    input [14:12]     xfn3;   
  	     
@@ -43,9 +43,9 @@ module t5_back(/*AUTOARG*/
    
    input 	     srst, sclk, sena;   
 
-
-   wire 	     btype = (xopc[6] & !xopc[4] & !xopc[2]);// (opc[6:2] == 5'b11000);
-   wire 	     stype = (xopc[6:4] == 3'b010); //(opc[6:2] == 5'b01000);
+   // TODO: Move to D-stage
+   wire 	     btype = xopc[6] & !xopc[4] & !xopc[2];// (opc[6:2] == 5'b11000);
+   wire 	     stype = !xopc[6] & xopc[5] & !xopc[4]; //(opc[6:2] == 5'b01000);
    
    assign mhart = mpc[1:0];
    assign rd0a = mrd;
@@ -122,7 +122,7 @@ module t5_back(/*AUTOARG*/
      end else if (sena) begin
 	mrd <= xrd;
 	xrd <= drd;
-	drd <= idat[11:7];	
+	drd <= iwb_dat[11:7];	
      end
 
    

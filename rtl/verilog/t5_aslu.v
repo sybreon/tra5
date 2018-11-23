@@ -16,35 +16,35 @@
 
 module t5_aslu (/*AUTOARG*/
    // Outputs
-   malu, xbpc, xbra, xdat, xopc, xfn3,
+   xfn3, malu, xbpc, xbra, xdat, xopc,
    // Inputs
-   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, xepc, sysc, sclk,
-   srst, sena
+   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, sysc, sclk, srst,
+   sena
    );
    parameter XLEN = 32;
 
-   output [XLEN-1:0] malu;
-   output [XLEN-1:0] xbpc;
-   output 	     xbra;
-//, mlnk;
+   output [14:12] xfn3; 	     
+   output [31:0]  malu;
+   output [31:0]  xbpc;
+   output 	  xbra;
    
-   output [XLEN-1:0] xdat;
-   output [6:2]      xopc;
-   output [14:12]    xfn3; 	     
    
-   input [XLEN-1:0]  dop1, dop2, dcp1, dcp2;
-   input [6:2] 	     dopc;
-   input [31:25]     dfn7;
-   input [14:12]     dfn3;
-   input [XLEN-1:0]  xpc;
-   input [XLEN-1:2]  xepc;
-
-   input 	     sysc;   
-   input 	     sclk, srst, sena;
-
+   output [31:0]  xdat;
+   output [6:2]   xopc;
+   
+   input [31:0]   dop1, dop2;
+   input [31:2]   dcp1, dcp2;
+   input [6:2] 	  dopc;
+   input [31:25]  dfn7;
+   input [14:12]  dfn3;
+   input [31:0]   xpc;
+   
+   input 	  sysc;   
+   input 	  sclk, srst, sena;
+   
    // OPCODE PIPELINE
-   reg [6:2] 	     xopc;
-   reg [14:12] 	     xfn3;
+   reg [6:2] 	  xopc;
+   reg [14:12] 	  xfn3;
 
    always @(posedge sclk)
      if (srst) begin
@@ -57,15 +57,33 @@ module t5_aslu (/*AUTOARG*/
 	xopc <= dopc;
 	xfn3 <= dfn3;	
      end
-      
-   // ADDER
-   reg [XLEN-1:0]    xadd;
-   always @(/*AUTOSENSE*/dfn7 or dop1 or dop2 or dopc)
-     xadd <= (dfn7[30] & !dopc[6] & dopc[5] & dopc[4]) ? dop1 - dop2 : // SUB
-	     dop1 + dop2; // ADD
+
+   // ADD30
+   reg [31:2] xadr;
+   always @(/*AUTOSENSE*/dcp1 or dcp2)
+     xadr <= dcp1 + dcp2;   
+   
+   // ADD32
+   reg [32:0]    xadd;
+   wire [32:0] 	 wop1, wop2;
+   
+   assign wop1[32] = (&dfn3[14:13] | &dfn3[13:12]) ? 1'b0 : dop1[31];
+   assign wop2[32] = (&dfn3[14:13] | &dfn3[13:12]) ? 1'b0 : dop2[31];
+   assign wop1[31:0] = dop1;
+   assign wop2[31:0] = dop2;
+   
+   always @(/*AUTOSENSE*/dfn3 or dfn7 or dopc or wop1 or wop2)
+     if ((dfn7[30] & !dopc[6] & dopc[5] & dopc[4])| // SUB
+	 (dfn3[13] & !dopc[6] & dopc[5] & dopc[4] & !dopc[2])| // SLT
+	 (dfn3[13] & !dopc[6] & !dopc[5] & dopc[4] & !dopc[2])| // SLTI
+	 (dopc[6] & dopc[5] & !dopc[4] & !dopc[2]) // BCC
+	 )
+       xadd <= wop1 - wop2;
+     else
+       xadd <= wop1 + wop2; // ADD
 
    // LOGIC
-   reg [XLEN-1:0]    xlog;
+   reg [31:0]    xlog;
    always @(/*AUTOSENSE*/dfn3 or dop1 or dop2)
      case (dfn3)
        3'b100: xlog <= dop1 ^ dop2; // XOR
@@ -75,13 +93,13 @@ module t5_aslu (/*AUTOARG*/
      endcase // case (dfn3)
 
    // SHIFT
-   reg [XLEN-1:0]    xshf;
+   reg [31:0]    xshf;
    always @(/*AUTOSENSE*/dfn3 or dfn7 or dop1 or dop2) begin
       case ({dfn3[14],dfn7[30]})
 	2'b00: xshf <= dop1 << dop2[4:0]; // SLL
 	2'b10: xshf <= dop1 >> dop2[4:0]; // SRL
 	2'b11: case (dop2[4:0]) // SRA
-		 5'd00: xshf <= dop1;
+		 5'd00: xshf <= dop1;		 
 		 5'd01: xshf <= {{(1){dop1[31]}}, dop1[31:1]};
 		 5'd02: xshf <= {{(2){dop1[31]}}, dop1[31:2]};
 		 5'd03: xshf <= {{(3){dop1[31]}}, dop1[31:3]};
@@ -113,41 +131,30 @@ module t5_aslu (/*AUTOARG*/
 		 5'd29: xshf <= {{(29){dop1[31]}}, dop1[31:29]};
 		 5'd30: xshf <= {{(30){dop1[31]}}, dop1[31:30]};
 		 5'd31: xshf <= {{(31){dop1[31]}}, dop1[31]};
-	       endcase // case (dop2[4:0])
-	
+	       endcase // case (dop2[4:0])	
 	default: xshf <= 32'hX;	
       endcase // case ({dfn3[14],dfn7[30]})      
    end
 
    // COMPARE/SET
-   wire [32:0] ssub = {1'b0,dcp2} - {1'b0,dcp1};
-   wire [32:0] usub = {dcp2[31],dcp2} - {dcp1[31],dcp1};   
-
+   wire xneq = |xadd[31:0];   
    reg xcmp;
-   always @(/*AUTOSENSE*/dcp1 or dcp2 or dfn3 or dop1 or dop2 or ssub
-	    or usub)
+   always @(/*AUTOSENSE*/dfn3 or xadd or xneq)
      case (dfn3)
-       3'o0: xcmp = (dcp1 == dcp2); // BE
-       3'o1: xcmp = !(dcp1 == dcp2); // BNE
-       3'o2: xcmp = (dop1 < dop2); // SLT
-       3'o3: xcmp = (dop1 < dop2); // SLTU
-       3'o4: xcmp = ssub[32];
-       //(dcp1 < dcp2); // BLT
-       3'o5: xcmp = !ssub[32];
-       //!(dcp1 < dcp2); // BGE 
-       3'o6: xcmp = usub[32];
-       //(dcp1 < dcp2); // BLTU
-       3'o7: xcmp = !usub[32];
-       //!(dcp1 < dcp2); // BGEU
-       // FIXME: Unsigned operations
-       default: xcmp = 1'bX;       
+       3'o0: xcmp = !xneq; // BE
+       3'o1: xcmp = xneq; // BNE       
+       3'o2: xcmp = xadd[32]; // SLT cp1<cp2
+       3'o3: xcmp = xadd[32]; // SLTU       
+       3'o4: xcmp = xadd[32]; // BLT cp1<cp2
+       3'o5: xcmp = !xadd[32]; // BGE       
+       3'o6: xcmp = xadd[32]; // BLTU cp1<cp2
+       3'o7: xcmp = !xadd[32]; // BGEU
      endcase // case (dfn3)
 
-   reg [XLEN-1:0] xset;
-   always @(/*AUTOSENSE*/xcmp) begin
-     xset <= {{(XLEN-1){1'b0}}, xcmp};
+   reg [31:0] xset;
+   always @(/*AUTOSENSE*/xadd) begin
+     xset <= {31'd0, xadd[31]};
    end
-
 
    // CSR
    localparam [11:0]
@@ -191,7 +198,6 @@ module t5_aslu (/*AUTOARG*/
 	if (csr)
 	  case (dop2[31:20])
 	    CSR_MEPC: mepc <= dcp1[XLEN-1:2];
-	    //	  CSR_ECALL: mepc <= xepc[XLEN-1:2];
 	    default: mepc <= mepc;
 	  endcase // case (dop2[31:20])
 	
@@ -220,29 +226,30 @@ module t5_aslu (/*AUTOARG*/
 	xlnk <= {xlnk[0], dopc[6] & dopc[5] & dopc[2]}; // LINK	
      end
    
-   reg [XLEN-1:0] xbpc;
-   reg [XLEN-1:0] xdat;   
-   reg [XLEN-1:0] xmov;
+   reg [31:0] xbpc;
+   reg [31:0] xdat;   
+   reg [31:0] xmov;
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	xbpc <= {XLEN{1'b0}};
-	xdat <= {XLEN{1'b0}};
-	xmov <= {XLEN{1'b0}};
+	xbpc <= 32'h0;
+	xdat <= 32'h0;
+	xmov <= 32'h0;
 	// End of automatics
   end else if (sena) begin
 
      case ({sysc,dop2[21]})
        2'b11: xbpc <= {mepc,2'd0};
-       default: xbpc <= xadd;       
+       default: xbpc <= {xadr,2'd0};       
      endcase // case ({sysc,dop2[21]})
      
-     xmov <= dop2;     
+     xmov <= xadd;
+     
      case (dfn3[13:12]) 
-       2'o0: xdat <= {4{dcp2[7:0]}};
-       2'o1: xdat <= {2{dcp2[15:0]}};
-       2'o2: xdat <= dcp2;
+       2'o0: xdat <= {4{xadd[7:0]}};
+       2'o1: xdat <= {2{xadd[15:0]}};
+       2'o2: xdat <= xadd;
        default: xdat <= 32'hX;       
      endcase // case (xadd[1:0])     
   end
@@ -253,7 +260,7 @@ module t5_aslu (/*AUTOARG*/
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	malu <= {XLEN{1'b0}};
+	malu <= 32'h0;
 	xalu <= {XLEN{1'b0}};
 	// End of automatics
   end else if (sena) begin
