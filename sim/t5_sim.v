@@ -2,13 +2,14 @@ module t5_sim();
    localparam XLEN =32;   
    /*AUTOREGINPUT*/
    // Beginning of automatic reg inputs (for undeclared instantiated-module inputs)
-   reg			dwb_ack;		// To uut of t5_cpu.v
-   reg [XLEN-1:0]	dwb_dti;		// To uut of t5_cpu.v
-   reg [XLEN-1:0]	idat;			// To uut of t5_cpu.v
-   reg			sexe;			// To uut of t5_cpu.v
-   reg			sys_clk;		// To uut of t5_cpu.v
-   reg			sys_ena;		// To uut of t5_cpu.v
-   reg			sys_rst;		// To uut of t5_cpu.v
+   reg			dwb_ack;		// To uut of t5_rv32i.v
+   reg [XLEN-1:0]	dwb_dti;		// To uut of t5_rv32i.v
+   reg			iwb_ack;		// To uut of t5_rv32i.v
+   reg [31:0]		iwb_dat;		// To uut of t5_rv32i.v
+   reg			sexe;			// To uut of t5_rv32i.v
+   reg			sys_clk;		// To uut of t5_rv32i.v
+   reg			sys_ena;		// To uut of t5_rv32i.v
+   reg			sys_rst;		// To uut of t5_rv32i.v
    // End of automatics
 
    always #5 sys_clk <= !sys_clk;
@@ -32,18 +33,21 @@ module t5_sim();
       sexe = 0;
             
       #50 sys_rst = 0;      
-      #5000 $displayh("\n*** TIMEOUT ", $stime, " ***"); $finish;
+      #500000 $displayh("\n*** TIMEOUT ", $stime, " ***"); $finish;
       
    end // initial begin
    
    /*AUTOWIRE*/
    // Beginning of automatic wires (for undeclared instantiated-module outputs)
-   wire [XLEN-1:2]	dwb_adr;		// From uut of t5_cpu.v
-   wire [XLEN-1:0]	dwb_dto;		// From uut of t5_cpu.v
-   wire [3:0]		dwb_sel;		// From uut of t5_cpu.v
-   wire			dwb_stb;		// From uut of t5_cpu.v
-   wire			dwb_wre;		// From uut of t5_cpu.v
-   wire [XLEN-1:2]	iadr;			// From uut of t5_cpu.v
+   wire [31:2]		dwb_adr;		// From uut of t5_rv32i.v
+   wire [31:0]		dwb_dto;		// From uut of t5_rv32i.v
+   wire [3:0]		dwb_sel;		// From uut of t5_rv32i.v
+   wire			dwb_stb;		// From uut of t5_rv32i.v
+   wire			dwb_wre;		// From uut of t5_rv32i.v
+   wire [31:2]		iwb_adr;		// From uut of t5_rv32i.v
+   wire [3:0]		iwb_sel;		// From uut of t5_rv32i.v
+   wire			iwb_stb;		// From uut of t5_rv32i.v
+   wire			iwb_wre;		// From uut of t5_rv32i.v
    // End of automatics
 
    // FAKE MEMORY ////////////////////////////////////////////////////////
@@ -59,13 +63,13 @@ module t5_sim();
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
 	dwb_ack <= 1'h0;
-	idat <= 1'h0;
+	iwb_dat <= 1'h0;
 	// End of automatics
      end else begin
 	// Include a certain random element in acks.
-	if (!(dwb_stb ^ dwb_ack)) idat <= rom[iadr];	
+	if (!(dwb_stb ^ dwb_ack)) iwb_dat <= rom[iwb_adr];	
 	dwb_ack <= dwb_stb & !dwb_ack & $random;
-	$displayh("PC@", {iadr,2'o0});	
+	$displayh("PC@", {iwb_adr,2'o0});	
      end // else: !if(sys_rst_i)
 
    reg [XLEN-1:0] dwbdat;
@@ -115,23 +119,27 @@ module t5_sim();
       #1 $readmemh("dump.vmem",ram);
    end
 
-   t5_cpu
+   t5_rv32i
      #(/*AUTOINSTPARAM*/
        // Parameters
        .XLEN				(XLEN))
    uut
      (/*AUTOINST*/
       // Outputs
-      .dwb_adr				(dwb_adr[XLEN-1:2]),
-      .dwb_dto				(dwb_dto[XLEN-1:0]),
+      .dwb_adr				(dwb_adr[31:2]),
+      .dwb_dto				(dwb_dto[31:0]),
       .dwb_sel				(dwb_sel[3:0]),
       .dwb_stb				(dwb_stb),
       .dwb_wre				(dwb_wre),
-      .iadr				(iadr[XLEN-1:2]),
+      .iwb_adr				(iwb_adr[31:2]),
+      .iwb_sel				(iwb_sel[3:0]),
+      .iwb_stb				(iwb_stb),
+      .iwb_wre				(iwb_wre),
       // Inputs
       .dwb_ack				(dwb_ack),
       .dwb_dti				(dwb_dti[XLEN-1:0]),
-      .idat				(idat[XLEN-1:0]),
+      .iwb_ack				(iwb_ack),
+      .iwb_dat				(iwb_dat[31:0]),
       .sexe				(sexe),
       .sys_clk				(sys_clk),
       .sys_ena				(sys_ena),

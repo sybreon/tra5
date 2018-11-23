@@ -16,52 +16,49 @@
 
 module t5_ctrl (/*AUTOARG*/
    // Outputs
-   dop1, dop2, dcp1, dcp2, mpc, xpc, xepc, dopc, dfn3, dfn7, sysc,
-   rs1a, rs2a, fhart,
+   dfn3, dfn7, dop1, dop2, dcp1, dcp2, mpc, xpc, dopc, sysc, rs1a,
+   rs2a,
    // Inputs
-   fpc, idat, rs2d, rs1d, sclk, srst, sena, sexe
+   fpc, iwb_dat, rs2d, rs1d, sclk, srst, sena, sexe
    );
 
    parameter XLEN = 32;
 
-   output [XLEN-1:0] dop1, dop2, dcp1, dcp2;
-   output [XLEN-1:0] mpc, xpc;
-   output [XLEN-1:2] xepc;   
-   output [6:2]      dopc;
-   output [14:12]    dfn3;
-   output [31:25]    dfn7;
-
-   output 	     sysc;   
+   output [14:12] dfn3;
+   output [31:25] dfn7;   
+   output [31:0]  dop1, dop2;
+   output [31:0]  dcp1, dcp2;
+   output [31:0]  mpc, xpc;
+   output [6:2]   dopc;
+   output 	  sysc;
    
-   output [4:0]      rs1a, rs2a;   
-   output [1:0]      fhart;
+   output [4:0]   rs1a, rs2a;   
    
-   input [XLEN-1:0]  fpc;
-   input [XLEN-1:0]  idat;
-   input [XLEN-1:0]  rs2d, rs1d;
- 
-   input 	     sclk, srst, sena, sexe;
-
-   wire [1:0] 	     hart = fpc[1:0];
-   wire [31:0] 	     ireg = idat;
-   wire [6:2] 	     opc = ireg[6:2];
-
+   input [31:0]   fpc;
+   input [31:0]   iwb_dat;
+   input [31:0]   rs2d, rs1d;
+   
+   input 	  sclk, srst, sena, sexe;
+   
+   wire [31:0] 	  ireg = iwb_dat;
+   wire [6:2] 	  opc = ireg[6:2];
+   
    // FORMAT DECODER - pg 104
-   wire 	     btype = (opc[6] & !opc[4] & !opc[2]);// (opc[6:2] == 5'b11000);
-   wire 	     stype = (opc[6:4] == 3'b010); //(opc[6:2] == 5'b01000);
-   wire 	     utype = (opc[4] & (opc[2] | opc[6])); //(opc[6:2] == 5'b01101 | opc[6:2] == 5'b00101);
-   wire 	     jtype = (opc[6:2] == 5'b11011);
-   wire 	     itype = (opc[6:2] == 5'b11001 | (!opc[6] & !opc[5] & !opc[2]));   
-   wire 	     rtype = !opc[6] & opc[5] & opc[4] & !opc[2];
-   wire 	     rv32 = ireg[1] & ireg[0];
+   wire 	  rv32 = ireg[1] & ireg[0];
+   wire 	  btype = opc[6] & !opc[4] & !opc[2];// (opc[6:2] == 5'b11000);
+   wire 	  stype = !opc[6] & opc[5] & !opc[4]; //(opc[6:2] == 5'b01000);
+   wire 	  utype = !opc[6] & !opc[3] & opc[2]; //(opc[6:2] == 5'b01101 | opc[6:2] == 5'b00101);
+   wire 	  jtype = opc[6] & opc[3] & opc[2]; // 5'b11011   
+   wire 	  rtype = !opc[6] & opc[5] & opc[4] & !opc[2];
+   wire 	  itype = (!opc[5] & !opc[2]) | (opc == 5'b11001);
+   wire 	  ctype = opc[6] & opc[5] & opc[4];   
 	     
    // RS DECODER
    assign rs1a = ireg[19:15];
    assign rs2a = ireg[24:20];   
-   assign fhart = fpc[1:0];
    
    // IMMEDIATE DECODER - pg 12
-   reg [XLEN-1:0]    imm;
+   reg [31:0]    imm;
    always @(/*AUTOSENSE*/btype or ireg or itype or jtype or stype
 	    or utype) begin
       case ({itype,stype})
@@ -104,21 +101,22 @@ module t5_ctrl (/*AUTOARG*/
    end
 
    // DECODE OPERANDS
-   reg [XLEN-1:0]    dop1, dop2, dcp1, dcp2;
+   reg [31:0]    dop1, dop2;
+   reg [31:0] 	 dcp1, dcp2;
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	dcp1 <= {XLEN{1'b0}};
-	dcp2 <= {XLEN{1'b0}};
-	dop1 <= {XLEN{1'b0}};
-	dop2 <= {XLEN{1'b0}};
+	dcp1 <= 32'h0;
+	dcp2 <= 32'h0;
+	dop1 <= 32'h0;
+	dop2 <= 32'h0;
 	// End of automatics
      end else if (sena & rv32) begin
-	dcp1 <= rs1d; // Btype
-	dcp2 <= rs2d; // Btype & Stype	
-	dop1 <= (utype | btype | jtype) ? fpc : rs1d;	
-	dop2 <= (rtype) ? rs2d : imm;		
+	dcp1 <= (stype | itype) ? rs1d : fpc;
+	dcp2 <= imm; // RESERVED FOR EXECPTIONS
+	dop1 <= (rtype | itype | btype | ctype) ? rs1d : 32'd0;	
+	dop2 <= (rtype | stype | btype) ? rs2d : imm;		
      end
 
    // OPCODE
@@ -144,23 +142,23 @@ module t5_ctrl (/*AUTOARG*/
      end
    
    // PC PIPELINE
-   reg [XLEN-1:0]    dpc, xpc, mpc;
-   reg [XLEN-1:2]    xepc;   
-   wire [XLEN-1:2]   npc = fpc[XLEN-1:2] + 1;   
+   reg [31:0]    dpc, xpc, mpc;
+   reg [31:2]    xepc;   
+   wire [31:2]   npc = fpc[31:2] + 1; // PC+4
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	dpc <= {XLEN{1'b0}};
-	mpc <= {XLEN{1'b0}};
-	xepc <= {(1+(XLEN-1)-(2)){1'b0}};
-	xpc <= {XLEN{1'b0}};
+	dpc <= 32'h0;
+	mpc <= 32'h0;
+	xepc <= 30'h0;
+	xpc <= 32'h0;
 	// End of automatics
      end else if (sena & rv32) begin
 	mpc <= xpc;
 	xpc <= dpc;
 	dpc <= {npc,fpc[1:0]}; // standard increment
-	xepc <= fpc[XLEN-1:2];	
+	xepc <= fpc[31:2];	
      end	 
    
 endmodule // t5_ctrl

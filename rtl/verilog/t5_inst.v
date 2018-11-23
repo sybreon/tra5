@@ -16,20 +16,27 @@
 
 module t5_inst(/*AUTOARG*/
    // Outputs
-   fpc, iadr,
+   fpc, iwb_adr, iwb_stb, iwb_wre, iwb_sel, fhart,
    // Inputs
-   idat, xbpc, xpc, xbra, sclk, sena, srst
+   iwb_dat, xbpc, xpc, iwb_ack, xbra, sclk, sena, srst
    );
 
    parameter XLEN = 32;
 
-   output [XLEN-1:0] fpc;   
-   output [XLEN-1:2] iadr;
+   output [31:0] fpc;   
+   output [31:2] iwb_adr;
+   output 	 iwb_stb, iwb_wre;
+   output [3:0]  iwb_sel;
+   output [1:0]  fhart;
    
-   input [XLEN-1:0]  idat;      
-   input [XLEN-1:0]  xbpc, xpc;   
-   
-   input 	     xbra, sclk, sena, srst;
+   input [31:0]  iwb_dat;
+   input [31:0]  xbpc, xpc;   
+   input 	 iwb_ack;   
+   input 	 xbra, sclk, sena, srst;
+
+   assign iwb_sel = 4'hF;
+   assign iwb_wre = 1'b0;
+   assign iwb_stb = 1'b1;   
    
    // HART SWITCHER
    reg [1:0] 	     hart;      
@@ -40,31 +47,32 @@ module t5_inst(/*AUTOARG*/
        hart <= 2'h0;
        // End of automatics
      else if (sena)
-       hart <= {hart[0],~hart[1]}; // johnson counter to simplify resource usage
+       hart <= {hart[0],!hart[1]}; // johnson counter to simplify resource usage
    
-   // PC REGISTER
-   reg [XLEN-1:0]    fpc;   
+   // PC PIPELINE
+   reg [31:0]    fpc;   
+   assign fhart = fpc[1:0];
    always @(posedge sclk)
      if (srst)
        /*AUTORESET*/
        // Beginning of autoreset for uninitialized flops
-       fpc <= {XLEN{1'b0}};
+       fpc <= 32'h0;
        // End of automatics
      else if (sena)
-       fpc <= {iadr, hart};
+       fpc <= {iwb_adr, hart};
 
    // FETCH ADDRESS
-   reg [XLEN-1:2]    iadr;
+   reg [31:2]    iwb_adr;
    always @(posedge sclk)
      if (srst)
        /*AUTORESET*/
        // Beginning of autoreset for uninitialized flops
-       iadr <= {(1+(XLEN-1)-(2)){1'b0}};
+       iwb_adr <= 30'h0;
        // End of automatics
      else if (sena) begin
        case (xbra)
-	 1'b1: iadr <= xbpc[XLEN-1:2];
-	 default: iadr <= xpc[XLEN-1:2];	   
+	 1'b1: iwb_adr <= xbpc[XLEN-1:2];
+	 default: iwb_adr <= xpc[XLEN-1:2]; // PC4	 
        endcase // case (bra)
      end
    
