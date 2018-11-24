@@ -68,7 +68,7 @@ module t5_sim();
      end else begin
 	// Include a certain random element in acks.
 	if (!(dwb_stb ^ dwb_ack)) iwb_dat <= rom[iwb_adr];
-	if (iwb_dat == 32'hc0001073) begin
+	if (iwb_dat == 32'h00000073) begin
 	   for(i=32'h800; i<32'h840; i=i+1)
 	     $display("%x",ram[i]);	   
 	   $finish;
