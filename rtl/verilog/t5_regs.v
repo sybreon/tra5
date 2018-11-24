@@ -4,8 +4,8 @@ module t5_regs (/*AUTOARG*/
    // Outputs
    rs2d, rs1d,
    // Inputs
-   sena, sclk, rs2a, rs1a, rd0d, rd0a, mwre, mhart, fhart, dwb_dti,
-   malu, mpc
+   sclk, rs2a, rs1a, rd0d, rd0a, mwre, mhart, fhart, dwb_dti, malu,
+   mpc
    );
    parameter XLEN = 32;
    
@@ -24,7 +24,6 @@ module t5_regs (/*AUTOARG*/
    input [4:0]		rs1a;			// To gprf of t5_gprf.v
    input [4:0]		rs2a;			// To gprf of t5_gprf.v
    input		sclk;			// To gprf of t5_gprf.v
-   input		sena;			// To gprf of t5_gprf.v
    // End of automatics
    /*AUTOWIRE*/
 
@@ -51,8 +50,7 @@ module t5_regs (/*AUTOARG*/
       .rd0d				(rd0d[XLEN-1:0]),
       .rs1a				(rs1a[4:0]),
       .rs2a				(rs2a[4:0]),
-      .sclk				(sclk),
-      .sena				(sena));
+      .sclk				(sclk));
 
 endmodule // tra5_regs
 

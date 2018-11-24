@@ -55,7 +55,7 @@ module t5_back(/*AUTOARG*/
    reg [6:2] 	     mopc;
    always @(posedge sclk)
      if (srst) begin
-	mopc = 5'h0D;	
+	mopc <= 5'h0D;	
 	/*AUTORESET*/
      end else if (sena) begin
 	mopc <= xopc;	
@@ -106,7 +106,7 @@ module t5_back(/*AUTOARG*/
    reg [XLEN-1:0] dmux;
    assign rd0d = dmux;   
    always @(/*AUTOSENSE*/dext or malu or mopc) begin
-      dmux <= (mopc == 5'd0) ? dext : malu;      
+      dmux = (mopc == 5'd0) ? dext : malu;      
    end   
    
    // RD

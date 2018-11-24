@@ -44,7 +44,7 @@ module dpram (/*AUTOARG*/
 	   if ((i & 32'h1F) == 2)
 	     rRAM[i] = 32'h00010000;
 	   else
-	     rRAM[i] <= 32'd0;
+	     rRAM[i] = 32'd0;
 	end
    end
    // synopsys translate_on

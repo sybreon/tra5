@@ -115,7 +115,6 @@ module t5_rv32i (/*AUTOARG*/
 	 .rs1a				(rs1a[4:0]),
 	 .rs2a				(rs2a[4:0]),
 	 .sclk				(sclk),
-	 .sena				(sena),
 	 .dwb_dti			(dwb_dti[XLEN-1:0]),
 	 .malu				(malu[XLEN-1:0]),
 	 .mpc				(mpc[XLEN-1:0]));
