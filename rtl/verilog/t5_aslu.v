@@ -72,19 +72,17 @@ module t5_aslu (/*AUTOARG*/
    assign wop1[31:0] = dop1;
    assign wop2[31:0] = dop2;
    
-   always @(/*AUTOSENSE*/dsub or wop1 or wop2)
-     if (dsub)
-       xadd = wop1 - wop2;
-     else
-       xadd = wop1 + wop2; // ADD
+   always @(/*AUTOSENSE*/dsub or wop1 or wop2)     
+       xadd = (dsub) ? wop1 - wop2 : // SUB
+	      wop1 + wop2; // ADD
 
    // LOGIC
    reg [31:0]    xlog;
    always @(/*AUTOSENSE*/dfn3 or dop1 or dop2)
      case (dfn3[13:12])
-       3'b00: xlog = dop1 ^ dop2; // XOR
-       3'b10: xlog = dop1 | dop2; // OR
-       3'b11: xlog = dop1 & dop2; // AND
+       2'b00: xlog = dop1 ^ dop2; // XOR
+       2'b10: xlog = dop1 | dop2; // OR
+       2'b11: xlog = dop1 & dop2; // AND
        default: xlog = 32'hX;       
      endcase // case (dfn3)
 
@@ -204,7 +202,7 @@ module t5_aslu (/*AUTOARG*/
        CSR_MISA: rcsr = 32'h40000100;
        CSR_MSCRATCH: rcsr = mscratch;       
        CSR_MEDELEG: rcsr = medeleg;
-       CSR_MEPC: rcsr = {mepc, 2'd0};	  
+       CSR_MEPC: rcsr = {mepc[31:2], 2'd0};	  
        default: rcsr = {(XLEN){1'b0}};	  
      endcase // case (dop2[31:20])
 
@@ -255,13 +253,13 @@ module t5_aslu (/*AUTOARG*/
 	endcase // case ({dexc,dcp2[21]})
 	
 	// OPERAND CALC
-	xmov <= xadd;
+	xmov <= xadd[31:0];
 
 	// DATA BUS
 	case (dfn3[13:12]) 
 	  2'o0: xdat <= {4{xadd[7:0]}};
 	  2'o1: xdat <= {2{xadd[15:0]}};
-	  2'o2: xdat <= xadd;
+	  2'o2: xdat <= xadd[31:0];
 	  default: xdat <= 32'hX;       
 	endcase // case (xadd[1:0])     
      end
@@ -286,7 +284,7 @@ module t5_aslu (/*AUTOARG*/
 	endcase // case (xopc[6:4])
 	
 	case (dfn3)
-	  3'o0: xalu <= xadd;
+	  3'o0: xalu <= xadd[31:0];
 	  3'o1: xalu <= xshf;
 	  3'o2: xalu <= xset;
 	  3'o3: xalu <= xset;

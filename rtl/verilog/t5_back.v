@@ -25,10 +25,8 @@ module t5_back(/*AUTOARG*/
 
    output [XLEN-1:0] rd0d;
    output [4:0]      rd0a;
-//   output [1:0]      mhart;   
    output 	     mwre;
    
-//   input 	     mlnk;
    input [31:0]      iwb_dat;   
    input [6:2] 	     xopc;
    input [14:12]     xfn3;   
