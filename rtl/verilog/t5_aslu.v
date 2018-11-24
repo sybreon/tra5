@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Aeste Works (M) Sdn Bhd.
+ Copyright 2018 Shawn Tan <shawn.tan@aeste.my>.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ module t5_aslu (/*AUTOARG*/
    // Outputs
    xfn3, malu, xbpc, xbra, xdat, xopc,
    // Inputs
-   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, sysc, fhart, sclk,
-   srst, sena
+   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, dexc, dcsr, dsub,
+   fhart, sclk, srst, sena
    );
    parameter XLEN = 32;
 
@@ -27,8 +27,7 @@ module t5_aslu (/*AUTOARG*/
    output [31:0]  malu;
    output [31:0]  xbpc;
    output 	  xbra;
-   
-   
+      
    output [31:0]  xdat;
    output [6:2]   xopc;
    
@@ -39,7 +38,7 @@ module t5_aslu (/*AUTOARG*/
    input [14:12]  dfn3;
    input [31:0]   xpc;
    
-   input 	  sysc;
+   input 	  dexc, dcsr, dsub;
    input [1:0] 	  fhart;   
    input 	  sclk, srst, sena;
    
@@ -73,12 +72,8 @@ module t5_aslu (/*AUTOARG*/
    assign wop1[31:0] = dop1;
    assign wop2[31:0] = dop2;
    
-   always @(/*AUTOSENSE*/dfn3 or dfn7 or dopc or wop1 or wop2)
-     if ((dfn7[30] & !dopc[6] & dopc[5] & dopc[4] & !dopc[2])| // SUB
-	 (dfn3[13] & !dopc[6] & dopc[5] & dopc[4] & !dopc[2])| // SLT
-	 (dfn3[13] & !dopc[6] & !dopc[5] & dopc[4] & !dopc[2])| // SLTI
-	 (dopc[6] & dopc[5] & !dopc[4] & !dopc[2]) // BCC
-	 )
+   always @(/*AUTOSENSE*/dsub or wop1 or wop2)
+     if (dsub)
        xadd = wop1 - wop2;
      else
        xadd = wop1 + wop2; // ADD
@@ -162,11 +157,11 @@ module t5_aslu (/*AUTOARG*/
    reg [31:0] 	  rcsr, wcsr;   
    
    wire [31:0] 	  mask = (dfn3[14]) ? {27'd0,dcp2[19:15]} : dop1;   
-   wire 	  wecsr = &dopc[6:4] & (!dfn3[13] | |dcp2[19:15]);   // FIXME: FLAG
+   wire 	  wecsr = dcsr;
 
-   always @(/*AUTOSENSE*/dfn3 or mask)
+   always @(/*AUTOSENSE*/dfn3 or mask or rcsr)
      case(dfn3[13:12])
-       default: rcsr = 32'hX;
+       default: wcsr = 32'hX;       
        2'd1: wcsr = mask; // move bits
        2'd2: wcsr = rcsr | mask; // set bits
        2'd3: wcsr = rcsr & ~mask; // clear bits
@@ -185,7 +180,7 @@ module t5_aslu (/*AUTOARG*/
    
    reg [31:0] mepc;
    reg [31:0] medeleg;
-   reg [31:0] mscratch;   
+   reg [31:0] mscratch;  // FIXME: hart-local
    
    // WRITE CSR
    always @(posedge sclk)
@@ -197,7 +192,7 @@ module t5_aslu (/*AUTOARG*/
 	mscratch <= 32'h0;
 	// End of automatics
      end else if (sena & wecsr) begin
-	if (dcp2[31:20] == CSR_MEPC) mepc <= wcsr;
+	if (dcp2[31:20] == CSR_MEPC) mepc <= wcsr; // FIXME: ECALL
 	if (dcp2[31:20] == CSR_MEDELEG) medeleg <= wcsr;
 	if (dcp2[31:20] == CSR_MSCRATCH) mscratch <= wcsr;	
      end
@@ -236,7 +231,7 @@ module t5_aslu (/*AUTOARG*/
 	xlnk <= 2'h0;
 	// End of automatics
      end else if (sena) begin
-	xbra <= (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
+	xbra <= dexc | (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
 	xlnk <= {xlnk[0], dopc[6] & dopc[5] & dopc[2]}; // LINK	
      end
    
@@ -253,8 +248,12 @@ module t5_aslu (/*AUTOARG*/
 	// End of automatics
      end else if (sena) begin
 	// ADDRESS CALC
-	xbpc <= {xadr,2'd0};
-
+	case ({dexc,dcp2[21]})
+	  2'b11: xbpc <= mepc; // RET
+	  2'b10: xbpc <= 32'hX; // ECALL FIXME:
+	  default: xbpc <= {xadr,2'd0};
+	endcase // case ({dexc,dcp2[21]})
+	
 	// OPERAND CALC
 	xmov <= xadd;
 

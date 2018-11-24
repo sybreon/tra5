@@ -50,11 +50,14 @@ module t5_rv32i (/*AUTOARG*/
    // Beginning of automatic wires (for undeclared instantiated-module outputs)
    wire [31:0]		dcp1;			// From ctrl of t5_ctrl.v
    wire [31:0]		dcp2;			// From ctrl of t5_ctrl.v
+   wire			dcsr;			// From ctrl of t5_ctrl.v
+   wire			dexc;			// From ctrl of t5_ctrl.v
    wire [14:12]		dfn3;			// From ctrl of t5_ctrl.v
    wire [31:25]		dfn7;			// From ctrl of t5_ctrl.v
    wire [31:0]		dop1;			// From ctrl of t5_ctrl.v
    wire [31:0]		dop2;			// From ctrl of t5_ctrl.v
    wire [6:2]		dopc;			// From ctrl of t5_ctrl.v
+   wire			dsub;			// From ctrl of t5_ctrl.v
    wire [1:0]		fhart;			// From inst of t5_inst.v
    wire [31:0]		fpc;			// From inst of t5_inst.v
    wire [31:0]		malu;			// From aslu of t5_aslu.v
@@ -70,7 +73,6 @@ module t5_rv32i (/*AUTOARG*/
    wire			sclk;			// From csys of t5_sysc.v
    wire			sena;			// From csys of t5_sysc.v
    wire			srst;			// From csys of t5_sysc.v
-   wire			sysc;			// From ctrl of t5_ctrl.v
    wire [31:0]		xbpc;			// From aslu of t5_aslu.v
    wire			xbra;			// From aslu of t5_aslu.v
    wire [31:0]		xdat;			// From aslu of t5_aslu.v
@@ -210,7 +212,9 @@ module t5_rv32i (/*AUTOARG*/
 	 .dfn7				(dfn7[31:25]),
 	 .dfn3				(dfn3[14:12]),
 	 .xpc				(xpc[31:0]),
-	 .sysc				(sysc),
+	 .dexc				(dexc),
+	 .dcsr				(dcsr),
+	 .dsub				(dsub),
 	 .fhart				(fhart[1:0]),
 	 .sclk				(sclk),
 	 .srst				(srst),
@@ -230,7 +234,9 @@ module t5_rv32i (/*AUTOARG*/
 	 .mpc				(mpc[31:0]),
 	 .xpc				(xpc[31:0]),
 	 .dopc				(dopc[6:2]),
-	 .sysc				(sysc),
+	 .dexc				(dexc),
+	 .dcsr				(dcsr),
+	 .dsub				(dsub),
 	 .rs1a				(rs1a[4:0]),
 	 .rs2a				(rs2a[4:0]),
 	 // Inputs

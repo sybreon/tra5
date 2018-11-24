@@ -16,8 +16,8 @@
 
 module t5_ctrl (/*AUTOARG*/
    // Outputs
-   dfn3, dfn7, dop1, dop2, dcp1, dcp2, mpc, xpc, dopc, sysc, rs1a,
-   rs2a,
+   dfn3, dfn7, dop1, dop2, dcp1, dcp2, mpc, xpc, dopc, dexc, dcsr,
+   dsub, rs1a, rs2a,
    // Inputs
    fpc, iwb_dat, rs2d, rs1d, sclk, srst, sena, sexe
    );
@@ -30,7 +30,8 @@ module t5_ctrl (/*AUTOARG*/
    output [31:0]  dcp1, dcp2;
    output [31:0]  mpc, xpc;
    output [6:2]   dopc;
-   output 	  sysc;
+
+   output 	  dexc, dcsr, dsub;		  
    
    output [4:0]   rs1a, rs2a;   
    
@@ -52,7 +53,22 @@ module t5_ctrl (/*AUTOARG*/
    wire 	  rtype = !opc[6] & opc[5] & opc[4] & !opc[2];
    wire 	  itype = (!opc[5] & !opc[2]) | (opc == 5'b11001);
    wire 	  ctype = opc[6] & opc[4] & |ireg[13:12];
-   wire 	  etype = opc[6] & opc[4] & ~|ireg[13:12];   
+   wire 	  etype = opc[6] & opc[4] & ~|ireg[13:12];
+
+   reg 		  dexc, dcsr, dsub;   
+   always @(posedge sclk)
+     if (srst) begin
+	/*AUTORESET*/
+	// Beginning of autoreset for uninitialized flops
+	dcsr <= 1'h0;
+	dexc <= 1'h0;
+	dsub <= 1'h0;
+	// End of automatics
+     end else if (sena) begin
+	dexc <= etype;
+	dcsr <= ctype;
+	dsub <= btype | (rtype & (ireg[13] | ireg[30])) | (itype & ireg[13]);	
+     end
 	     
    // RS DECODER
    assign rs1a = ireg[19:15];
@@ -115,7 +131,7 @@ module t5_ctrl (/*AUTOARG*/
 	// End of automatics
      end else if (sena & rv32) begin
 	dcp1 <= (stype | itype | etype) ? rs1d : fpc;
-	dcp2 <= (ctype) ? {ireg[31:15],15'hX} : imm; // RESERVED FOR SYSTEM
+	dcp2 <= (ctype | etype) ? {ireg[31:15],15'hX} : imm; // RESERVED FOR SYSTEM
 	
 	dop1 <= (rtype | itype | btype | ctype) ? rs1d : 32'd0;	
 	dop2 <= (rtype | stype | btype) ? rs2d : imm;		
