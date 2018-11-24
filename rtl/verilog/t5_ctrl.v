@@ -141,7 +141,6 @@ module t5_ctrl (/*AUTOARG*/
    reg [14:12] dfn3;
    reg [31:25] dfn7;
    reg [6:2]   dopc;
-   reg 	       sysc;
    
    always @(posedge sclk)
      if (srst) begin
@@ -150,13 +149,11 @@ module t5_ctrl (/*AUTOARG*/
 	// Beginning of autoreset for uninitialized flops
 	dfn3 <= 3'h0;
 	dfn7 <= 7'h0;
-	sysc <= 1'h0;
 	// End of automatics
      end else if (sena & rv32) begin
 	dopc <= ireg[6:2];
 	dfn3 <= ireg[14:12];
 	dfn7 <= ireg[31:25];
-	sysc <= ~|ireg[19:7] & &ireg[6:4];	
      end
    
    // PC PIPELINE
