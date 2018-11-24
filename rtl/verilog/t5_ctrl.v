@@ -114,8 +114,9 @@ module t5_ctrl (/*AUTOARG*/
 	dop2 <= 32'h0;
 	// End of automatics
      end else if (sena & rv32) begin
-	dcp1 <= (stype | itype) ? rs1d : fpc;
+	dcp1 <= (stype | itype | etype) ? rs1d : fpc;
 	dcp2 <= (ctype) ? {ireg[31:15],15'hX} : imm; // RESERVED FOR SYSTEM
+	
 	dop1 <= (rtype | itype | btype | ctype) ? rs1d : 32'd0;	
 	dop2 <= (rtype | stype | btype) ? rs2d : imm;		
      end

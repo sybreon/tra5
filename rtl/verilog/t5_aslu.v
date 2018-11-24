@@ -74,7 +74,7 @@ module t5_aslu (/*AUTOARG*/
    assign wop2[31:0] = dop2;
    
    always @(/*AUTOSENSE*/dfn3 or dfn7 or dopc or wop1 or wop2)
-     if ((dfn7[30] & !dopc[6] & dopc[5] & dopc[4])| // SUB
+     if ((dfn7[30] & !dopc[6] & dopc[5] & dopc[4] & !dopc[2])| // SUB
 	 (dfn3[13] & !dopc[6] & dopc[5] & dopc[4] & !dopc[2])| // SLT
 	 (dfn3[13] & !dopc[6] & !dopc[5] & dopc[4] & !dopc[2])| // SLTI
 	 (dopc[6] & dopc[5] & !dopc[4] & !dopc[2]) // BCC
@@ -162,7 +162,7 @@ module t5_aslu (/*AUTOARG*/
    reg [31:0] 	  rcsr, wcsr;   
    
    wire [31:0] 	  mask = (dfn3[14]) ? {27'd0,dcp2[19:15]} : dop1;   
-   wire 	  wecsr = |dcp2[19:15];   
+   wire 	  wecsr = &dopc[6:4] & (!dfn3[13] | |dcp2[19:15]);   // FIXME: FLAG
 
    always @(/*AUTOSENSE*/dfn3 or mask)
      case(dfn3[13:12])
@@ -253,10 +253,7 @@ module t5_aslu (/*AUTOARG*/
 	// End of automatics
      end else if (sena) begin
 	// ADDRESS CALC
-	case (dop2[21])
-	  1'b1: xbpc <= {mepc,2'd0};
-	  default: xbpc <= {xadr,2'd0};       
-	endcase // case ({sysc,dop2[21]})
+	xbpc <= {xadr,2'd0};
 
 	// OPERAND CALC
 	xmov <= xadd;

@@ -33,7 +33,7 @@ module t5_sim();
       sexe = 0;
             
       #50 sys_rst = 0;      
-      #5000 $display("\n*** TIMEOUT %d", $stime); $finish;
+      #10000 $display("\n*** TIMEOUT %d", $stime); $finish;
       
    end // initial begin
    
