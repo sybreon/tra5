@@ -159,17 +159,17 @@ module t5_aslu (/*AUTOARG*/
 
    // CSR
    reg [XLEN-1:0] xcsr;
-   reg [31:0] 	  rcsr;   
+   reg [31:0] 	  rcsr, wcsr;   
    
    wire [31:0] 	  mask = (dfn3[14]) ? {27'd0,dcp2[19:15]} : dop1;   
-   wire 	  wcsr = |dcp2[19:15];   
+   wire 	  wecsr = |dcp2[19:15];   
 
-   always @(/*AUTOSENSE*/dfn3 or dop1 or mask or rmask)
+   always @(/*AUTOSENSE*/dfn3 or mask)
      case(dfn3[13:12])
        default: rcsr = 32'hX;
-       2'd1: rcsr = mask; // move bits
-       2'd2: rcsr = mask | dop1; // set bits
-       2'd3: rcsr = mask & ~rmask; // clear bits
+       2'd1: wcsr = mask; // move bits
+       2'd2: wcsr = rcsr | mask; // set bits
+       2'd3: wcsr = rcsr & ~mask; // clear bits
      endcase // case (dfn3[13:12])
    
    localparam [11:0]
@@ -179,30 +179,40 @@ module t5_aslu (/*AUTOARG*/
      CSR_MEDELEG = 12'h302,
      CSR_MIDELEG = 12'h303,
      CSR_MIE = 12'h304,
-     CSR_MTVEC = 12'h305,
+     CSR_MSCRATCH = 12'h340,
      CSR_MEPC = 12'h341,
-     CSR_MVENDORID = 12'hF11,
-     CSR_MARCHID = 12'hF12,
-     CSR_MIMPID = 12'hF13,
      CSR_MHARTID = 12'hF14;
    
-   reg [XLEN-1:2] mepc;
-   reg [XLEN-1:0] medeleg;   
-
+   reg [31:0] mepc;
+   reg [31:0] medeleg;
+   reg [31:0] mscratch;   
+   
    // WRITE CSR
    always @(posedge sclk)
      if (srst)  begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	medeleg <= {XLEN{1'b0}};
-	mepc <= {(1+(XLEN-1)-(2)){1'b0}};
+	medeleg <= 32'h0;
+	mepc <= 32'h0;
+	mscratch <= 32'h0;
 	// End of automatics
-     end else if (sena & wcsr) begin
-	if (dcp2[31:20] == CSR_MEPC) mepc <= rcsr;
-	if (dcp2[31:20] == CSR_MEDELEG) medeleg <= rcsr;	
+     end else if (sena & wecsr) begin
+	if (dcp2[31:20] == CSR_MEPC) mepc <= wcsr;
+	if (dcp2[31:20] == CSR_MEDELEG) medeleg <= wcsr;
+	if (dcp2[31:20] == CSR_MSCRATCH) mscratch <= wcsr;	
      end
    
    // READ CSR
+   always @(/*AUTOSENSE*/dcp1 or dcp2 or medeleg or mepc or mscratch)
+     case (dcp2[31:20])
+       CSR_MHARTID: rcsr = {30'd0,dcp1[1:0]};
+       CSR_MISA: rcsr = 32'h40000100;
+       CSR_MSCRATCH: rcsr = mscratch;       
+       CSR_MEDELEG: rcsr = medeleg;
+       CSR_MEPC: rcsr = {mepc, 2'd0};	  
+       default: rcsr = {(XLEN){1'b0}};	  
+     endcase // case (dop2[31:20])
+
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
@@ -210,14 +220,9 @@ module t5_aslu (/*AUTOARG*/
 	xcsr <= {XLEN{1'b0}};
 	// End of automatics
      end else if (sena) begin
-	  case (dcp2[31:20])
-	    CSR_MHARTID: xcsr <= {30'd0,dcp1[1:0]};
-	    CSR_MISA: xcsr <= 32'h40000100;
-	    CSR_MEDELEG: xcsr <= medeleg;
-	    CSR_MEPC: xcsr <= {mepc, 2'd0};	  
-	    default: xcsr <= {(XLEN){1'b0}};	  
-	  endcase // case (dop2[31:20])
+	xcsr <= rcsr;	
      end
+   
       
    // BRANCH
    reg 		  xbra;
