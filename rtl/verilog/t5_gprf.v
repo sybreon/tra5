@@ -2,7 +2,7 @@ module t5_gprf(/*AUTOARG*/
    // Outputs
    rs2d, rs1d,
    // Inputs
-   sena, sclk, rs2a, rs1a, rd0d, rd0a, mwre, mhart, fhart
+   sclk, rs2a, rs1a, rd0d, rd0a, mwre, mhart, fhart
    );
    parameter XLEN = 32;
    localparam AW = 7;   
@@ -22,15 +22,14 @@ module t5_gprf(/*AUTOARG*/
    input [4:0]		rs1a;			// To rs1 of dpram.v
    input [4:0]		rs2a;			// To rs2 of dpram.v
    input		sclk;			// To rs1 of dpram.v, ...
-   input		sena;			// To rs1 of dpram.v, ...
    // End of automatics
-   		
+   
    /* dpram AUTO_TEMPLATE (
     .AW(AW), 
     .DW(XLEN),
     
     .clk_i(sclk),
-    .ena_i(sena),
+    .ena_i(1'b1),
     
     .dat_i(rd0d[XLEN-1:0]),
     .adr_i({mhart[1:0],rd0a[4:0]}),
@@ -59,7 +58,7 @@ module t5_gprf(/*AUTOARG*/
 	.xdat_i				({XLEN{1'bX}}),		 // Templated
 	.xwre_i				(1'b0),			 // Templated
 	.clk_i				(sclk),			 // Templated
-	.ena_i				(sena));			 // Templated
+	.ena_i				(1'b1));			 // Templated
    
    dpram #(/*AUTOINSTPARAM*/
 	   // Parameters
@@ -77,6 +76,6 @@ module t5_gprf(/*AUTOARG*/
 	.xdat_i				({XLEN{1'bX}}),		 // Templated
 	.xwre_i				(1'b0),			 // Templated
 	.clk_i				(sclk),			 // Templated
-	.ena_i				(sena));			 // Templated
+	.ena_i				(1'b1));			 // Templated
       
 endmodule // tra5_regfile

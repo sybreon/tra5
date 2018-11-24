@@ -55,7 +55,7 @@ module t5_back(/*AUTOARG*/
    reg [6:2] 	     mopc;
    always @(posedge sclk)
      if (srst) begin
-	mopc = 5'h0D;	
+	mopc <= 5'h0D;	
 	/*AUTORESET*/
      end else if (sena) begin
 	mopc <= xopc;	
