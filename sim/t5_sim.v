@@ -22,10 +22,10 @@ module t5_sim();
       //if (!$value$plusargs("randseed=%d",  randseed)) randseed=42;
       //timer0 = $random(randseed);
 
-      if ($value$plusargs("dumpfile=%s",  randseed)) begin
-	 $dumpfile ("dump.vcd");
-	 $dumpvars (2,uut);
-      end
+      //if ($value$plusargs("dumpfile=%s",  randseed)) begin
+      $dumpfile ("dump.vcd");
+      $dumpvars (2,uut);
+   //end
      
       sys_clk = $random;
       sys_rst = 1;
@@ -33,7 +33,7 @@ module t5_sim();
       sexe = 0;
             
       #50 sys_rst = 0;      
-      #5000 $displayh("\n*** TIMEOUT ", $stime, " ***"); $finish;
+      #5000 $display("\n*** TIMEOUT %d", $stime); $finish;
       
    end // initial begin
    
@@ -69,7 +69,7 @@ module t5_sim();
 	// Include a certain random element in acks.
 	if (!(dwb_stb ^ dwb_ack)) iwb_dat <= rom[iwb_adr];	
 	dwb_ack <= dwb_stb & !dwb_ack & $random;
-	$displayh("PC@", {iwb_adr,2'o0});	
+	$display("PC@%x", {iwb_adr,2'o0});	
      end // else: !if(sys_rst_i)
 
    reg [XLEN-1:0] dwbdat;
@@ -88,7 +88,7 @@ module t5_sim();
    always @(posedge sys_clk) begin
       if (dwb_wre & dwb_stb & dwb_ack) begin
 	 ram[dadr] <= dwbdat;	 
-	 $displayh("WRITE @",{dwb_adr, 2'd0}, " = ", dwbdat);
+	 $display("WRITE @ %x = %x",{dwb_adr, 2'd0}, dwbdat);
       end
    end
    
@@ -99,10 +99,10 @@ module t5_sim();
       if (dwb_stb & !dwb_wre & dwb_ack) begin
 	 case (dwb_sel)
 	   4'h1,4'h2,4'h4,4'h8,4'h3,4'hC,4'hF: begin
-	      $displayh("READ  @",{dwb_adr,2'd0}, " = ", dwb_dti);	      
+	      $display("READ @ %x = %x",{dwb_adr,2'd0}, dwb_dti);	      
 	   end // case: 4'h1,4'h2,4'h4,4'h8,4'h3,4'hC,4'hF
 	   default: begin // Wrong Select bits
-	      $displayh("*** ERROR READ  @",{dwb_adr,2'd0}, " ***");	      
+	      $display("*** ERROR READ @ %x",{dwb_adr,2'd0});	      
 	      //$finish;	      
 	   end	   
 	 endcase // case (dwb_sel_o)	 

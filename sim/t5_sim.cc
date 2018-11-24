@@ -1,19 +1,12 @@
-#include "Vt5_rv32i.h"
-#include "sc_clock.h"
+#include "Vt5_sim.h"
 #include "verilated.h"
-Vt5_rv32i *top;
+Vt5_sim *top;
 int main(int argc, char** argv, char** env) {
   Verilated::commandArgs(argc, argv);
-  sc_clock sclk ("sys_clk",10);
-  top = new Vt5_rv32i;
-  top->sys_rst = 1;
-  top->sys_ena = 1;
-  top->sexe = 0;
-  top->sys_clk(sclk);
+  top = new Vt5_sim;
   while (!Verilated::gotFinish()) {
     top->eval();
   }
-  top->final();
   delete top;
-  exit(0);
+  return 0;
 }
