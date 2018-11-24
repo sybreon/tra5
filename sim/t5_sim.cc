@@ -7,32 +7,45 @@
 #include <vector>
 #include <cstdlib>
 #include <iomanip>
+#include <sstream>
+#include <string>
 
 #define RAMSIZE 1<<16 // 64k words
 std::vector<char> buf(RAMSIZE);
+
+// Command line arguments
+// 1 - BIN FILE
+// 2 - OUT FILE
+// 3 - BEGIN SIGNATURE
+// 4 - END SIGNATURE
 
 int main(int argc, char** argv, char** env) {
   Vt5_rv32i *cpu;
   uint32_t cnt = 0;
 
+  if (argc < 5) exit(-1);
+  
   Verilated::commandArgs(argc, argv);
-
+  
   cpu = new Vt5_rv32i;
-  //buf = new char [RAMSIZE];
 
   // LOAD RAM
-  std::ifstream bin("elf.bin", std::ios::binary);
+  std::cout << "BIN:" << argv[1] << std::endl;
+  std::ifstream bin(argv[1], std::ios::binary);
   bin.read(buf.data(), RAMSIZE);
   bin.close();
 
   uint32_t * ram = (uint32_t*) buf.data();
     
   // VCD DUMP
+#ifdef TRACE
   Verilated::traceEverOn(true);
   VerilatedVcdC* tfp = new VerilatedVcdC;
   cpu->trace(tfp, 99);
   tfp->open("dump.vcd");
-
+  std::cout << "VCD:" << argv[2] << std::endl;  
+#endif
+  
   // RESET
   std::cout << "RESET CPU" << std::endl;
   
@@ -40,8 +53,9 @@ int main(int argc, char** argv, char** env) {
   cpu->sys_ena = 1;
   cpu->sys_clk = 0;  
   cpu->eval();
+#ifdef TRACE
   tfp->dump(0);
-
+#endif
   
   // RUN
   uint32_t iadr, dadr, dat, wadr;
@@ -83,8 +97,10 @@ int main(int argc, char** argv, char** env) {
     
     cpu->sys_clk = 1;
     cpu->eval();
+#ifdef TRACE
     tfp->dump(cnt);
-
+#endif
+    
     // Falling Edge
     if (!cpu->sys_rst) {
       if (iadr << 2 > buf.size()) break;      
@@ -97,18 +113,44 @@ int main(int argc, char** argv, char** env) {
     if (cnt == 50) cpu->sys_rst = 0;
 
     cpu->sys_clk = 0;
-    cpu->eval();    
+    cpu->eval();
+#ifdef TRACE
     tfp->dump(cnt+1);
     tfp->flush();
-
+#endif
+    
     if (cpu->iwb_dat == 0x073) {
       break;
     }
   }
 
+  // DUMP SIGNATURE
+  uint32_t signa, signo;
+  std::stringstream ss;
+  ss << std::hex << argv[3];
+  ss >> signa;
+  ss.clear();  
+  ss << std::hex << argv[4];
+  ss >> signo;
+  
+  std::cout << "OUT:" << argv[2] << "[" << signa << "-" << signo << "]" << std::endl;
+  std::ofstream out(argv[2], std::ios::trunc);
+  std::string line = "";
+  
+  for(uint32_t adr = signa; adr < signo; adr += 16) {
+    for(uint32_t xadr = adr + 13; xadr > adr; xadr -= 4) {
+      out << std::setfill('0') << std::setw(8) << std::hex << ram[xadr >> 2];
+    }
+    out << std::endl;
+  }
+  
+  out.close();
+    
   // FREE
-  tfp->close();
-  delete tfp;  
+#ifdef TRACE
+    tfp->close();
+    delete tfp;
+#endif
   delete cpu;  
   return 0;
 }
