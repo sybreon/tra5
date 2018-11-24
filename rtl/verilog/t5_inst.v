@@ -16,7 +16,7 @@
 
 module t5_inst(/*AUTOARG*/
    // Outputs
-   fpc, iwb_adr, iwb_stb, iwb_wre, iwb_sel, fhart,
+   fpc, iwb_adr, iwb_stb, iwb_wre, iwb_sel, fhart, mhart,
    // Inputs
    iwb_dat, xbpc, xpc, iwb_ack, xbra, sclk, sena, srst
    );
@@ -27,7 +27,7 @@ module t5_inst(/*AUTOARG*/
    output [31:2] iwb_adr;
    output 	 iwb_stb, iwb_wre;
    output [3:0]  iwb_sel;
-   output [1:0]  fhart;
+   output [1:0]  fhart, mhart;
    
    input [31:0]  iwb_dat;
    input [31:0]  xbpc, xpc;   
@@ -39,7 +39,9 @@ module t5_inst(/*AUTOARG*/
    assign iwb_stb = 1'b1;   
    
    // HART SWITCHER
-   reg [1:0] 	     hart;      
+   reg [1:0] 	     hart;   
+   assign mhart = hart;
+   
    always @(posedge sclk)     
      if (srst)
        /*AUTORESET*/

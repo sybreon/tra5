@@ -16,7 +16,7 @@
 
 module t5_back(/*AUTOARG*/
    // Outputs
-   rd0d, rd0a, mhart, mwre,
+   rd0d, rd0a, mwre,
    // Inputs
    iwb_dat, xopc, xfn3, dwb_dti, xsel, dwb_ack, xstb, xwre, mpc, malu,
    srst, sclk, sena
@@ -25,7 +25,7 @@ module t5_back(/*AUTOARG*/
 
    output [XLEN-1:0] rd0d;
    output [4:0]      rd0a;
-   output [1:0]      mhart;   
+//   output [1:0]      mhart;   
    output 	     mwre;
    
 //   input 	     mlnk;
@@ -47,9 +47,7 @@ module t5_back(/*AUTOARG*/
    wire 	     btype = xopc[6] & !xopc[4] & !xopc[2];// (opc[6:2] == 5'b11000);
    wire 	     stype = !xopc[6] & xopc[5] & !xopc[4]; //(opc[6:2] == 5'b01000);
    
-   assign mhart = mpc[1:0];
    assign rd0a = mrd;
-
 
    // OPCODE PIPELINE
    reg [6:2] 	     mopc;

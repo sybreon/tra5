@@ -51,7 +51,8 @@ module t5_ctrl (/*AUTOARG*/
    wire 	  jtype = opc[6] & opc[3] & opc[2]; // 5'b11011   
    wire 	  rtype = !opc[6] & opc[5] & opc[4] & !opc[2];
    wire 	  itype = (!opc[5] & !opc[2]) | (opc == 5'b11001);
-   wire 	  ctype = opc[6] & opc[5] & opc[4];   
+   wire 	  ctype = opc[6] & opc[4] & |ireg[13:12];
+   wire 	  etype = opc[6] & opc[4] & ~|ireg[13:12];   
 	     
    // RS DECODER
    assign rs1a = ireg[19:15];
@@ -114,7 +115,7 @@ module t5_ctrl (/*AUTOARG*/
 	// End of automatics
      end else if (sena & rv32) begin
 	dcp1 <= (stype | itype) ? rs1d : fpc;
-	dcp2 <= imm; // RESERVED FOR EXECPTIONS
+	dcp2 <= (ctype) ? {ireg[31:15],15'hX} : imm; // RESERVED FOR SYSTEM
 	dop1 <= (rtype | itype | btype | ctype) ? rs1d : 32'd0;	
 	dop2 <= (rtype | stype | btype) ? rs2d : imm;		
      end

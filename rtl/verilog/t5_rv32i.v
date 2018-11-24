@@ -58,7 +58,7 @@ module t5_rv32i (/*AUTOARG*/
    wire [1:0]		fhart;			// From inst of t5_inst.v
    wire [31:0]		fpc;			// From inst of t5_inst.v
    wire [31:0]		malu;			// From aslu of t5_aslu.v
-   wire [1:0]		mhart;			// From back of t5_back.v
+   wire [1:0]		mhart;			// From inst of t5_inst.v
    wire [31:0]		mpc;			// From ctrl of t5_ctrl.v
    wire			mwre;			// From back of t5_back.v
    wire [4:0]		rd0a;			// From back of t5_back.v
@@ -126,7 +126,6 @@ module t5_rv32i (/*AUTOARG*/
 	 // Outputs
 	 .rd0d				(rd0d[XLEN-1:0]),
 	 .rd0a				(rd0a[4:0]),
-	 .mhart				(mhart[1:0]),
 	 .mwre				(mwre),
 	 // Inputs
 	 .iwb_dat			(iwb_dat[31:0]),
@@ -154,6 +153,7 @@ module t5_rv32i (/*AUTOARG*/
 	 .iwb_wre			(iwb_wre),
 	 .iwb_sel			(iwb_sel[3:0]),
 	 .fhart				(fhart[1:0]),
+	 .mhart				(mhart[1:0]),
 	 // Inputs
 	 .iwb_dat			(iwb_dat[31:0]),
 	 .xbpc				(xbpc[31:0]),
@@ -204,13 +204,14 @@ module t5_rv32i (/*AUTOARG*/
 	 // Inputs
 	 .dop1				(dop1[31:0]),
 	 .dop2				(dop2[31:0]),
-	 .dcp1				(dcp1[31:2]),
-	 .dcp2				(dcp2[31:2]),
+	 .dcp1				(dcp1[31:0]),
+	 .dcp2				(dcp2[31:0]),
 	 .dopc				(dopc[6:2]),
 	 .dfn7				(dfn7[31:25]),
 	 .dfn3				(dfn3[14:12]),
 	 .xpc				(xpc[31:0]),
 	 .sysc				(sysc),
+	 .fhart				(fhart[1:0]),
 	 .sclk				(sclk),
 	 .srst				(srst),
 	 .sena				(sena));

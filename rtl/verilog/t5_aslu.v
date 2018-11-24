@@ -18,8 +18,8 @@ module t5_aslu (/*AUTOARG*/
    // Outputs
    xfn3, malu, xbpc, xbra, xdat, xopc,
    // Inputs
-   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, sysc, sclk, srst,
-   sena
+   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, sysc, fhart, sclk,
+   srst, sena
    );
    parameter XLEN = 32;
 
@@ -33,13 +33,14 @@ module t5_aslu (/*AUTOARG*/
    output [6:2]   xopc;
    
    input [31:0]   dop1, dop2;
-   input [31:2]   dcp1, dcp2;
+   input [31:0]   dcp1, dcp2;
    input [6:2] 	  dopc;
    input [31:25]  dfn7;
    input [14:12]  dfn3;
    input [31:0]   xpc;
    
-   input 	  sysc;   
+   input 	  sysc;
+   input [1:0] 	  fhart;   
    input 	  sclk, srst, sena;
    
    // OPCODE PIPELINE
@@ -61,7 +62,7 @@ module t5_aslu (/*AUTOARG*/
    // ADD30
    reg [31:2] xadr;
    always @(/*AUTOSENSE*/dcp1 or dcp2)
-     xadr = dcp1 + dcp2;   
+     xadr = dcp1[31:2] + dcp2[31:2];   
    
    // ADD32
    reg [32:0]    xadd;
@@ -157,6 +158,20 @@ module t5_aslu (/*AUTOARG*/
    end
 
    // CSR
+   reg [XLEN-1:0] xcsr;
+   reg [31:0] 	  rcsr;   
+   
+   wire [31:0] 	  mask = (dfn3[14]) ? {27'd0,dcp2[19:15]} : dop1;   
+   wire 	  wcsr = |dcp2[19:15];   
+
+   always @(/*AUTOSENSE*/dfn3 or dop1 or mask or rmask)
+     case(dfn3[13:12])
+       default: rcsr = 32'hX;
+       2'd1: rcsr = mask; // move bits
+       2'd2: rcsr = mask | dop1; // set bits
+       2'd3: rcsr = mask & ~rmask; // clear bits
+     endcase // case (dfn3[13:12])
+   
    localparam [11:0]
      CSR_ECALL = 12'h000,
      CSR_MSTATUS = 12'h300,
@@ -171,48 +186,42 @@ module t5_aslu (/*AUTOARG*/
      CSR_MIMPID = 12'hF13,
      CSR_MHARTID = 12'hF14;
    
-   reg [XLEN-1:0] xcsr;
    reg [XLEN-1:2] mepc;
    reg [XLEN-1:0] medeleg;   
 
-   wire 	  csr = dfn3[13] | dfn3[12];
-
+   // WRITE CSR
    always @(posedge sclk)
-     if (srst) begin
+     if (srst)  begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
 	medeleg <= {XLEN{1'b0}};
 	mepc <= {(1+(XLEN-1)-(2)){1'b0}};
+	// End of automatics
+     end else if (sena & wcsr) begin
+	if (dcp2[31:20] == CSR_MEPC) mepc <= rcsr;
+	if (dcp2[31:20] == CSR_MEDELEG) medeleg <= rcsr;	
+     end
+   
+   // READ CSR
+   always @(posedge sclk)
+     if (srst) begin
+	/*AUTORESET*/
+	// Beginning of autoreset for uninitialized flops
 	xcsr <= {XLEN{1'b0}};
 	// End of automatics
      end else if (sena) begin
-	if (csr)
-	  case (dop2[31:20])
-	    CSR_MHARTID: xcsr <= {{(XLEN-2){1'b0}},dop1[1:0]};
+	  case (dcp2[31:20])
+	    CSR_MHARTID: xcsr <= {30'd0,dcp1[1:0]};
 	    CSR_MISA: xcsr <= 32'h40000100;
 	    CSR_MEDELEG: xcsr <= medeleg;
 	    CSR_MEPC: xcsr <= {mepc, 2'd0};	  
 	    default: xcsr <= {(XLEN){1'b0}};	  
-	  endcase // case (dop2[31:20])
-
-	if (csr)
-	  case (dop2[31:20])
-	    CSR_MEPC: mepc <= dcp1[XLEN-1:2];
-	    default: mepc <= mepc;
-	  endcase // case (dop2[31:20])
-	
-	if (csr)
-	  case (dop2[31:20])
-	    CSR_MEDELEG: medeleg <= dcp1;
-	    default: medeleg <= medeleg;	  
 	  endcase // case (dop2[31:20])
      end
       
    // BRANCH
    reg 		  xbra;
    reg [1:0] 	  xlnk;
-//   assign mlnk = xlnk[1];
-   //wire 	  call = ~|dfn3 & &dopc[6:4]; // system call
    
    always @(posedge sclk)
      if (srst) begin
@@ -222,7 +231,7 @@ module t5_aslu (/*AUTOARG*/
 	xlnk <= 2'h0;
 	// End of automatics
      end else if (sena) begin
-	xbra <= sysc | (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
+	xbra <= (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
 	xlnk <= {xlnk[0], dopc[6] & dopc[5] & dopc[2]}; // LINK	
      end
    
@@ -237,22 +246,24 @@ module t5_aslu (/*AUTOARG*/
 	xdat <= 32'h0;
 	xmov <= 32'h0;
 	// End of automatics
-  end else if (sena) begin
+     end else if (sena) begin
+	// ADDRESS CALC
+	case (dop2[21])
+	  1'b1: xbpc <= {mepc,2'd0};
+	  default: xbpc <= {xadr,2'd0};       
+	endcase // case ({sysc,dop2[21]})
 
-     case ({sysc,dop2[21]})
-       2'b11: xbpc <= {mepc,2'd0};
-       default: xbpc <= {xadr,2'd0};       
-     endcase // case ({sysc,dop2[21]})
-     
-     xmov <= xadd;
-     
-     case (dfn3[13:12]) 
-       2'o0: xdat <= {4{xadd[7:0]}};
-       2'o1: xdat <= {2{xadd[15:0]}};
-       2'o2: xdat <= xadd;
-       default: xdat <= 32'hX;       
-     endcase // case (xadd[1:0])     
-  end
+	// OPERAND CALC
+	xmov <= xadd;
+
+	// DATA BUS
+	case (dfn3[13:12]) 
+	  2'o0: xdat <= {4{xadd[7:0]}};
+	  2'o1: xdat <= {2{xadd[15:0]}};
+	  2'o2: xdat <= xadd;
+	  default: xdat <= 32'hX;       
+	endcase // case (xadd[1:0])     
+     end
    
    // ASLU
    reg [XLEN-1:0] xalu, malu;   
@@ -263,27 +274,27 @@ module t5_aslu (/*AUTOARG*/
 	malu <= 32'h0;
 	xalu <= {XLEN{1'b0}};
 	// End of automatics
-  end else if (sena) begin
-     case ({xopc[6],xopc[5],xopc[4],xopc[2]})
-       4'b0111: malu <= xmov; // LUI
-       4'b1101: malu <= {xpc[XLEN-1:2],2'd0}; // JAL/R       
-       4'b0011: malu <= {xbpc[XLEN-1:2],2'd0}; // AUIPC
-       4'b0010,4'b0110: malu <= xalu; // ALU
-       4'b1110: malu <= xcsr;       
-       default: malu <= 32'hX;       
-     endcase // case (xopc[6:4])
-     
-     case (dfn3)
-       3'o0: xalu <= xadd;
-       3'o1: xalu <= xshf;
-       3'o2: xalu <= xset;
-       3'o3: xalu <= xset;
-       3'o4: xalu <= xlog;
-       3'o5: xalu <= xshf;
-       3'o6: xalu <= xlog;
-       3'o7: xalu <= xlog;       
-     endcase // case (dfn3)
-  end
+     end else if (sena) begin
+	case ({xopc[6],xopc[5],xopc[4],xopc[2]})
+	  4'b0111: malu <= xmov; // LUI
+	  4'b1101: malu <= {xpc[XLEN-1:2],2'd0}; // JAL/R       
+	  4'b0011: malu <= {xbpc[XLEN-1:2],2'd0}; // AUIPC
+	  4'b0010,4'b0110: malu <= xalu; // ALU
+	  4'b1110: malu <= xcsr;       
+	  default: malu <= 32'hX;       
+	endcase // case (xopc[6:4])
+	
+	case (dfn3)
+	  3'o0: xalu <= xadd;
+	  3'o1: xalu <= xshf;
+	  3'o2: xalu <= xset;
+	  3'o3: xalu <= xset;
+	  3'o4: xalu <= xlog;
+	  3'o5: xalu <= xshf;
+	  3'o6: xalu <= xlog;
+	  3'o7: xalu <= xlog;       
+	endcase // case (dfn3)
+     end
    
 
    
