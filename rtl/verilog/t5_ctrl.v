@@ -62,42 +62,42 @@ module t5_ctrl (/*AUTOARG*/
    always @(/*AUTOSENSE*/btype or ireg or itype or jtype or stype
 	    or utype) begin
       case ({itype,stype})
-	2'b10: imm[0] <= ireg[20];
-	2'b01: imm[0] <= ireg[7];
-	2'b00: imm[0] <= 1'b0;
-	default: imm[0] <= 1'bX;
+	2'b10: imm[0] = ireg[20];
+	2'b01: imm[0] = ireg[7];
+	2'b00: imm[0] = 1'b0;
+	default: imm[0] = 1'bX;
       endcase // case ({itype,stype})
       
       case ({(itype|jtype),(stype|btype)})
-	2'b10: imm[4:1] <= ireg[24:21];
-	2'b01: imm[4:1] <= ireg[11:8];
-	2'b00: imm[4:1] <= 4'h0;	
-	default: imm[4:1] <= 4'hX;	
+	2'b10: imm[4:1] = ireg[24:21];
+	2'b01: imm[4:1] = ireg[11:8];
+	2'b00: imm[4:1] = 4'h0;	
+	default: imm[4:1] = 4'hX;	
       endcase // case ({(itype|jtype),(stype|btype)})
       
       case (utype)
-	1'b1: imm[10:5] <= 6'd0;
-	default: imm[10:5] <= ireg[30:25];	
+	1'b1: imm[10:5] = 6'd0;
+	default: imm[10:5] = ireg[30:25];	
       endcase // case (utype)
 
       case ({(utype|jtype),(utype|btype)})
-	2'b10: imm[11] <= ireg[20]; // JAL
-	2'b01: imm[11] <= ireg[7]; // BCC
-	2'b11: imm[11] <= 1'b0;	// UI
-	default: imm[11] <= ireg[31]; 
+	2'b10: imm[11] = ireg[20]; // JAL
+	2'b01: imm[11] = ireg[7]; // BCC
+	2'b11: imm[11] = 1'b0;	// UI
+	default: imm[11] = ireg[31]; 
       endcase // case ({(itype|jtype),(stype|btype)})      
       
       case (utype|jtype)
-	1'b1: imm[19:12] <= ireg[19:12];
-	default: imm[19:12] <= {8{ireg[31]}};	
+	1'b1: imm[19:12] = ireg[19:12];
+	default: imm[19:12] = {8{ireg[31]}};	
       endcase // case (utype|jtype)
 
       case(utype)
-	1'b1: imm[30:20] <= ireg[30:20];
-	default: imm[30:20] <= {11{ireg[31]}};	
+	1'b1: imm[30:20] = ireg[30:20];
+	default: imm[30:20] = {11{ireg[31]}};	
       endcase // case (utype)
             
-      imm[31] <= ireg[31];            
+      imm[31] = ireg[31];            
    end
 
    // DECODE OPERANDS

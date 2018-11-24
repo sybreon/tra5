@@ -106,7 +106,7 @@ module t5_back(/*AUTOARG*/
    reg [XLEN-1:0] dmux;
    assign rd0d = dmux;   
    always @(/*AUTOSENSE*/dext or malu or mopc) begin
-      dmux <= (mopc == 5'd0) ? dext : malu;      
+      dmux = (mopc == 5'd0) ? dext : malu;      
    end   
    
    // RD

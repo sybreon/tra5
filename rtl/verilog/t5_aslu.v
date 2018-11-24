@@ -61,7 +61,7 @@ module t5_aslu (/*AUTOARG*/
    // ADD30
    reg [31:2] xadr;
    always @(/*AUTOSENSE*/dcp1 or dcp2)
-     xadr <= dcp1 + dcp2;   
+     xadr = dcp1 + dcp2;   
    
    // ADD32
    reg [32:0]    xadd;
@@ -78,61 +78,61 @@ module t5_aslu (/*AUTOARG*/
 	 (dfn3[13] & !dopc[6] & !dopc[5] & dopc[4] & !dopc[2])| // SLTI
 	 (dopc[6] & dopc[5] & !dopc[4] & !dopc[2]) // BCC
 	 )
-       xadd <= wop1 - wop2;
+       xadd = wop1 - wop2;
      else
-       xadd <= wop1 + wop2; // ADD
+       xadd = wop1 + wop2; // ADD
 
    // LOGIC
    reg [31:0]    xlog;
    always @(/*AUTOSENSE*/dfn3 or dop1 or dop2)
-     case (dfn3)
-       3'b100: xlog <= dop1 ^ dop2; // XOR
-       3'b110: xlog <= dop1 | dop2; // OR
-       3'b111: xlog <= dop1 & dop2; // AND
-       default: xlog <= 32'hX;       
+     case (dfn3[13:12])
+       3'b00: xlog = dop1 ^ dop2; // XOR
+       3'b10: xlog = dop1 | dop2; // OR
+       3'b11: xlog = dop1 & dop2; // AND
+       default: xlog = 32'hX;       
      endcase // case (dfn3)
 
    // SHIFT
    reg [31:0]    xshf;
    always @(/*AUTOSENSE*/dfn3 or dfn7 or dop1 or dop2) begin
       case ({dfn3[14],dfn7[30]})
-	2'b00: xshf <= dop1 << dop2[4:0]; // SLL
-	2'b10: xshf <= dop1 >> dop2[4:0]; // SRL
+	2'b00: xshf = dop1 << dop2[4:0]; // SLL
+	2'b10: xshf = dop1 >> dop2[4:0]; // SRL
 	2'b11: case (dop2[4:0]) // SRA
-		 5'd00: xshf <= dop1;		 
-		 5'd01: xshf <= {{(1){dop1[31]}}, dop1[31:1]};
-		 5'd02: xshf <= {{(2){dop1[31]}}, dop1[31:2]};
-		 5'd03: xshf <= {{(3){dop1[31]}}, dop1[31:3]};
-		 5'd04: xshf <= {{(4){dop1[31]}}, dop1[31:4]};
-		 5'd05: xshf <= {{(5){dop1[31]}}, dop1[31:5]};
-		 5'd06: xshf <= {{(6){dop1[31]}}, dop1[31:6]};
-		 5'd07: xshf <= {{(7){dop1[31]}}, dop1[31:7]};
-		 5'd08: xshf <= {{(8){dop1[31]}}, dop1[31:8]};
-		 5'd09: xshf <= {{(9){dop1[31]}}, dop1[31:9]};
-		 5'd10: xshf <= {{(10){dop1[31]}}, dop1[31:10]};
-		 5'd11: xshf <= {{(11){dop1[31]}}, dop1[31:11]};
-		 5'd12: xshf <= {{(12){dop1[31]}}, dop1[31:12]};
-		 5'd13: xshf <= {{(13){dop1[31]}}, dop1[31:13]};
-		 5'd14: xshf <= {{(14){dop1[31]}}, dop1[31:14]};
-		 5'd15: xshf <= {{(15){dop1[31]}}, dop1[31:15]};
-		 5'd16: xshf <= {{(16){dop1[31]}}, dop1[31:16]};
-		 5'd17: xshf <= {{(17){dop1[31]}}, dop1[31:17]};
-		 5'd18: xshf <= {{(18){dop1[31]}}, dop1[31:18]};
-		 5'd19: xshf <= {{(19){dop1[31]}}, dop1[31:19]};
-		 5'd20: xshf <= {{(20){dop1[31]}}, dop1[31:20]};
-		 5'd21: xshf <= {{(21){dop1[31]}}, dop1[31:21]};
-		 5'd22: xshf <= {{(22){dop1[31]}}, dop1[31:22]};
-		 5'd23: xshf <= {{(23){dop1[31]}}, dop1[31:23]};
-		 5'd24: xshf <= {{(24){dop1[31]}}, dop1[31:24]};
-		 5'd25: xshf <= {{(25){dop1[31]}}, dop1[31:25]};
-		 5'd26: xshf <= {{(26){dop1[31]}}, dop1[31:26]};
-		 5'd27: xshf <= {{(27){dop1[31]}}, dop1[31:27]};
-		 5'd28: xshf <= {{(28){dop1[31]}}, dop1[31:28]};
-		 5'd29: xshf <= {{(29){dop1[31]}}, dop1[31:29]};
-		 5'd30: xshf <= {{(30){dop1[31]}}, dop1[31:30]};
-		 5'd31: xshf <= {{(31){dop1[31]}}, dop1[31]};
-	       endcase // case (dop2[4:0])	
-	default: xshf <= 32'hX;	
+		 5'd00: xshf = dop1;		 
+		 5'd01: xshf = {{(1){dop1[31]}}, dop1[31:1]};
+		 5'd02: xshf = {{(2){dop1[31]}}, dop1[31:2]};
+		 5'd03: xshf = {{(3){dop1[31]}}, dop1[31:3]};
+		 5'd04: xshf = {{(4){dop1[31]}}, dop1[31:4]};
+		 5'd05: xshf = {{(5){dop1[31]}}, dop1[31:5]};
+		 5'd06: xshf = {{(6){dop1[31]}}, dop1[31:6]};
+		 5'd07: xshf = {{(7){dop1[31]}}, dop1[31:7]};
+		 5'd08: xshf = {{(8){dop1[31]}}, dop1[31:8]};
+		 5'd09: xshf = {{(9){dop1[31]}}, dop1[31:9]};
+		 5'd10: xshf = {{(10){dop1[31]}}, dop1[31:10]};
+		 5'd11: xshf = {{(11){dop1[31]}}, dop1[31:11]};
+		 5'd12: xshf = {{(12){dop1[31]}}, dop1[31:12]};
+		 5'd13: xshf = {{(13){dop1[31]}}, dop1[31:13]};
+		 5'd14: xshf = {{(14){dop1[31]}}, dop1[31:14]};
+		 5'd15: xshf = {{(15){dop1[31]}}, dop1[31:15]};
+		 5'd16: xshf = {{(16){dop1[31]}}, dop1[31:16]};
+		 5'd17: xshf = {{(17){dop1[31]}}, dop1[31:17]};
+		 5'd18: xshf = {{(18){dop1[31]}}, dop1[31:18]};
+		 5'd19: xshf = {{(19){dop1[31]}}, dop1[31:19]};
+		 5'd20: xshf = {{(20){dop1[31]}}, dop1[31:20]};
+		 5'd21: xshf = {{(21){dop1[31]}}, dop1[31:21]};
+		 5'd22: xshf = {{(22){dop1[31]}}, dop1[31:22]};
+		 5'd23: xshf = {{(23){dop1[31]}}, dop1[31:23]};
+		 5'd24: xshf = {{(24){dop1[31]}}, dop1[31:24]};
+		 5'd25: xshf = {{(25){dop1[31]}}, dop1[31:25]};
+		 5'd26: xshf = {{(26){dop1[31]}}, dop1[31:26]};
+		 5'd27: xshf = {{(27){dop1[31]}}, dop1[31:27]};
+		 5'd28: xshf = {{(28){dop1[31]}}, dop1[31:28]};
+		 5'd29: xshf = {{(29){dop1[31]}}, dop1[31:29]};
+		 5'd30: xshf = {{(30){dop1[31]}}, dop1[31:30]};
+		 5'd31: xshf = {{(31){dop1[31]}}, dop1[31]};
+	       endcase // cas (dop2[4:0])	
+	default: xshf = 32'hX;	
       endcase // case ({dfn3[14],dfn7[30]})      
    end
 
@@ -153,7 +153,7 @@ module t5_aslu (/*AUTOARG*/
 
    reg [31:0] xset;
    always @(/*AUTOSENSE*/xadd) begin
-     xset <= {31'd0, xadd[31]};
+     xset = {31'd0, xadd[31]};
    end
 
    // CSR
