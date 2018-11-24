@@ -67,7 +67,12 @@ module t5_sim();
 	// End of automatics
      end else begin
 	// Include a certain random element in acks.
-	if (!(dwb_stb ^ dwb_ack)) iwb_dat <= rom[iwb_adr];	
+	if (!(dwb_stb ^ dwb_ack)) iwb_dat <= rom[iwb_adr];
+	if (iwb_dat == 32'hc0001073) begin
+	   for(i=32'h800; i<32'h840; i=i+1)
+	     $display("%x",ram[i]);	   
+	   $finish;
+	end
 	dwb_ack <= dwb_stb & !dwb_ack & $random;
 	$display("PC@%x", {iwb_adr,2'o0});	
      end // else: !if(sys_rst_i)
