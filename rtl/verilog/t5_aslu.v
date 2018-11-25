@@ -189,25 +189,26 @@ module t5_aslu (/*AUTOARG*/
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
 	medeleg <= 32'h0;
-	mepc <= 32'h0;
 	mscratch <= 32'h0;
 	mtvec <= 32'h0;
 	// End of automatics
      end else if (sena & wecsr) begin
-	if (dcp2[31:20] == CSR_MEPC) mepc <= wcsr; // FIXME: ECALL
 	if (dcp2[31:20] == CSR_MEDELEG) medeleg <= wcsr;
 	if (dcp2[31:20] == CSR_MSCRATCH) mscratch <= wcsr;
 	if (dcp2[31:20] == CSR_MTVEC) mtvec <= wcsr;
      end
    
    // READ CSR
-   always @(/*AUTOSENSE*/dcp2 or dhart or medeleg or mepc or mscratch)
+   always @(/*AUTOSENSE*/dcp2 or dhart or medeleg or mepc or mscratch
+	    or mtval or mtvec)
      case (dcp2[31:20])
        CSR_MHARTID: rcsr = {30'd0,dhart};
        CSR_MISA: rcsr = 32'h40000100;
        CSR_MSCRATCH: rcsr = mscratch;       
        CSR_MEDELEG: rcsr = medeleg;
-       CSR_MEPC: rcsr = {mepc[31:2], 2'd0};	  
+       CSR_MEPC: rcsr = {mepc[31:2], 2'd0};
+       CSR_MTVAL: rcsr = mtval;
+       CSR_MTVEC: rcsr = mtvec;       
        default: rcsr = {(XLEN){1'b0}};	  
      endcase // case (dop2[31:20])
 
@@ -224,7 +225,7 @@ module t5_aslu (/*AUTOARG*/
       
    // BRANCH
    wire 	  wbra = dexc | (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
-   wire 	  balign = |xadr[1:0] & (dbra | djmp); // misaligned
+   wire 	  balign = (|xadr[1:0] & dbra) | (djmp & xadr[1]); // misaligned
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
@@ -300,20 +301,28 @@ module t5_aslu (/*AUTOARG*/
 
    // misalign
    reg [1:0]	  xbra;
-   reg [1:0] 	  xoff;	  
+   reg [1:0] 	  xoff;
+   wire 	  wtval = (dcp2[31:20] == CSR_MTVAL) & wecsr;   
+   wire 	  wepc = (dcp2[31:20] == CSR_MEPC) & wecsr;
+   
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
+	mepc <= 32'h0;
 	mtval <= 32'h0;
 	xoff <= 2'h0;
 	// End of automatics
      end else if (sena) begin
-	case({&xbra,&xstb})
+	if (wepc) mepc <= wcsr; // FIXME: ECALL
+
+	case({&xbra|wtval,&xstb|wtval})
+	  2'b11: mtval <= wcsr;	  
 	  2'b10, 2'b01: mtval <= {xbpc, xoff};
 	  default: mtval <= mtval;	  
 	endcase // case (xbra)
-	xoff <= xadr[1:0];	
+
+	xoff <= (djmp) ? {xadr[1],1'b0} : xadr[1:0];	
      end
    
 endmodule // t5_aslu
