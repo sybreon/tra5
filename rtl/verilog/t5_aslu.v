@@ -230,7 +230,7 @@ module t5_aslu (/*AUTOARG*/
       
    // BRANCH
    wire 	  wbra = (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
-   wire 	  balign = (|xadr[1:0] & dbra) | (djmp & xadr[1]); // misaligned
+   wire 	  balign = (|xadr[1:0] & dbra & xcmp) | (djmp & xadr[1]); // misaligned
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
@@ -334,7 +334,7 @@ module t5_aslu (/*AUTOARG*/
 	  3'b011: mcause <= wcsr[3:0];	  
 	  3'b010: mcause <= 4'h0;
 	  3'b110: mcause <= 4'hB;	  
-	  3'b001: mcause <= {2'o0, xwre, 1'b0};	  
+	  3'b001: mcause <= {2'o1, xwre, 1'b0};	  
 	  default: mcause <= mcause;	  
 	endcase // case (xbra)
 
