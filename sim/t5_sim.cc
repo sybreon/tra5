@@ -12,7 +12,7 @@
 #include <iterator>
 #include <algorithm>
 
-#define RAMSIZE 1<<16 // 64k words
+#define RAMSIZE 1<<20 // 64k words
 #define TRACE
 
 // Command line arguments
@@ -73,12 +73,19 @@ int main(int argc, char** argv, char** env) {
     cpu->eval();
     // Rising Edge
     if (!cpu->sys_rst) {
-      iadr = cpu->iwb_adr;
-      if (iadr << 2 >= buf.size()) break;
+      if (cpu->iwb_stb)
+	iadr = cpu->iwb_adr & 0x1FFFFFFF;
+      if (iadr << 2 >= buf.size()) {
+	std::cerr << "ERR IADR " << std::hex << iadr << std::endl;
+	break;
+      }
 
       if (cpu->dwb_stb) {
-	dadr = cpu->dwb_adr;
-	if (dadr << 2 >= buf.size()) break;
+	dadr = cpu->dwb_adr & 0x1FFFFFFF;
+	if (dadr << 2 >= buf.size()) {
+	  std::cerr << "ERR DADR " << std::hex << dadr << std::endl;
+	  break;
+	}
 
 	// RAM WRITE
 	if (cpu->dwb_wre && cpu->dwb_ack) {
@@ -118,12 +125,8 @@ int main(int argc, char** argv, char** env) {
     cpu->eval();
     // Falling Edge
     if (!cpu->sys_rst) {
-      if (cpu->iwb_stb)
 	cpu->iwb_dat = ram[iadr];
-
-      if (cpu->dwb_stb) {
 	cpu->dwb_dti = ram[dadr];
-      }
     }
     if (cnt == 50) cpu->sys_rst = 0;
 
@@ -135,6 +138,7 @@ int main(int argc, char** argv, char** env) {
 #endif
     
     if (cpu->iwb_dat == 0x073) {
+      std::cerr << "ECALL END" << std::endl;
       break;
     }
   }
@@ -154,7 +158,10 @@ int main(int argc, char** argv, char** env) {
   
   for(uint32_t adr = signa; adr < signo; adr += 16) {
     for(uint32_t xadr = adr + 13; xadr > adr; xadr -= 4) {
-      if (xadr >= buf.size()) break;
+      if (xadr >= buf.size()) {
+	std::cerr << "ERR XADR " << std::hex << xadr << std::endl;
+	break;
+      }
       out << std::setfill('0') << std::setw(8) << std::hex << ram[xadr >> 2];
     }
     out << std::endl;
