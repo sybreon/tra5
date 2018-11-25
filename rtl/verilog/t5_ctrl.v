@@ -16,10 +16,10 @@
 
 module t5_ctrl (/*AUTOARG*/
    // Outputs
-   dfn3, dfn7, dop1, dop2, dcp1, dcp2, mpc, xpc, dopc, dexc, dcsr,
-   dsub, rs1a, rs2a,
+   dfn3, dfn7, dop1, dop2, dcp1, dcp2, mpc, xpc, dopc, xepc, dexc,
+   dcsr, dsub, dbra, djmp, rs1a, rs2a,
    // Inputs
-   fpc, iwb_dat, rs2d, rs1d, sclk, srst, sena, sexe
+   fpc, iwb_dat, rs2d, rs1d, fhart, sclk, srst, sena, sexe
    );
 
    parameter XLEN = 32;
@@ -28,17 +28,18 @@ module t5_ctrl (/*AUTOARG*/
    output [31:25] dfn7;   
    output [31:0]  dop1, dop2;
    output [31:0]  dcp1, dcp2;
-   output [31:0]  mpc, xpc;
+   output [31:2]  mpc, xpc;
    output [6:2]   dopc;
-
-   output 	  dexc, dcsr, dsub;		  
+   output [31:2]  xepc;   
+   output 	  dexc, dcsr, dsub, dbra, djmp;		  
    
    output [4:0]   rs1a, rs2a;   
    
-   input [31:0]   fpc;
+   input [31:2]   fpc;
    input [31:0]   iwb_dat;
    input [31:0]   rs2d, rs1d;
-   
+   input [1:0] 	  fhart;
+ 	  
    input 	  sclk, srst, sena, sexe;
    
    wire [31:0] 	  ireg = iwb_dat;
@@ -55,19 +56,23 @@ module t5_ctrl (/*AUTOARG*/
    wire 	  ctype = opc[6] & opc[4] & |ireg[13:12];
    wire 	  etype = opc[6] & opc[4] & ~|ireg[13:12];
 
-   reg 		  dexc, dcsr, dsub;   
+   reg 		  dexc, dcsr, dsub, dbra, djmp;   
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
+	dbra <= 1'h0;
 	dcsr <= 1'h0;
 	dexc <= 1'h0;
+	djmp <= 1'h0;
 	dsub <= 1'h0;
 	// End of automatics
      end else if (sena) begin
 	dexc <= etype;
 	dcsr <= ctype;
-	dsub <= btype | (rtype & (ireg[13] | ireg[30])) | (itype & ireg[13]);	
+	dsub <= btype | (rtype & (ireg[13] | ireg[30])) | (itype & ireg[13]);
+	dbra <= btype;
+	djmp <= jtype | (itype & opc[6]);	
      end
 	     
    // RS DECODER
@@ -130,7 +135,7 @@ module t5_ctrl (/*AUTOARG*/
 	dop2 <= 32'h0;
 	// End of automatics
      end else if (sena & rv32) begin
-	dcp1 <= (stype | itype | etype) ? rs1d : fpc;
+	dcp1 <= (stype | itype | etype) ? rs1d : {fpc,2'd0};
 	dcp2 <= (ctype | etype) ? {ireg[31:15],15'hX} : imm; // RESERVED FOR SYSTEM
 	
 	dop1 <= (rtype | itype | btype | ctype) ? rs1d : 32'd0;	
@@ -157,23 +162,25 @@ module t5_ctrl (/*AUTOARG*/
      end
    
    // PC PIPELINE
-   reg [31:0]    dpc, xpc, mpc;
-   reg [31:2]    xepc;   
+   reg [31:2]    dpc, xpc, mpc;
+   reg [31:2]    xepc, depc;   
    wire [31:2]   npc = fpc[31:2] + 1; // PC+4
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	dpc <= 32'h0;
-	mpc <= 32'h0;
+	depc <= 30'h0;
+	dpc <= 30'h0;
+	mpc <= 30'h0;
 	xepc <= 30'h0;
-	xpc <= 32'h0;
+	xpc <= 30'h0;
 	// End of automatics
      end else if (sena & rv32) begin
 	mpc <= xpc;
 	xpc <= dpc;
-	dpc <= {npc,fpc[1:0]}; // standard increment
-	xepc <= fpc[31:2];	
+	dpc <= npc;	
+	xepc <= depc;	
+	depc <= fpc[31:2];	
      end	 
    
 endmodule // t5_ctrl

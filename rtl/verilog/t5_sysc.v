@@ -30,14 +30,14 @@ module t5_sysc(/*AUTOARG*/
    input  sys_rst;
    input  sys_ena;
    
-   input  xstb;
+   input [1:0] xstb;
    input  dwb_ack;   
 
    assign sclk = sys_clk;
-   assign sena = sys_ena & !(xstb ^ dwb_ack);
+   assign sena = sys_ena & !(xstb[1] ^ dwb_ack);
 
    reg [3:0] rst;
-   assign srst = sys_rst;
+   assign srst = rst[3];
    
    always @(posedge sys_clk)
      if (sys_rst) begin

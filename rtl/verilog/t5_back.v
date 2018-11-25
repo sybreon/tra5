@@ -18,26 +18,24 @@ module t5_back(/*AUTOARG*/
    // Outputs
    rd0d, rd0a, mwre,
    // Inputs
-   iwb_dat, xopc, xfn3, dwb_dti, xsel, dwb_ack, xstb, xwre, mpc, malu,
-   srst, sclk, sena
+   iwb_dat, xopc, xfn3, xstb, dwb_dti, xsel, malu, srst, sclk, sena
    );
    parameter XLEN = 32;
 
-   output [XLEN-1:0] rd0d;
+   output [31:0] rd0d;
    output [4:0]      rd0a;
    output 	     mwre;
    
-   input [31:0]      iwb_dat;   
+   input [11:7]      iwb_dat;   
    input [6:2] 	     xopc;
    input [14:12]     xfn3;   
- 	     
-   input [XLEN-1:0]  dwb_dti;
+   input [1:0] 	     xstb;
+   
+   input [31:0]      dwb_dti;
 
    input [3:0] 	     xsel;   
-   input 	     dwb_ack, xstb, xwre;
 
-   input [XLEN-1:0]  mpc;
-   input [XLEN-1:0]  malu;   
+   input [31:0]      malu;   
    
    input 	     srst, sclk, sena;   
 
@@ -129,7 +127,7 @@ module t5_back(/*AUTOARG*/
 	mwre <= 1'b1;	
 	/*AUTORESET*/
      end else if (sena) begin
-	mwre <= |xrd & !stype & !btype;	
+	mwre <= ~&xstb & |xrd & !stype & !btype;	
      end
    
 endmodule // t5_back

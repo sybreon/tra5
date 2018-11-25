@@ -4,8 +4,7 @@ module t5_regs (/*AUTOARG*/
    // Outputs
    rs2d, rs1d,
    // Inputs
-   sclk, rs2a, rs1a, rd0d, rd0a, mwre, mhart, fhart, dwb_dti, malu,
-   mpc
+   sclk, rs2a, rs1a, rd0d, rd0a, mwre, mhart, fhart
    );
    parameter XLEN = 32;
    
@@ -26,10 +25,6 @@ module t5_regs (/*AUTOARG*/
    input		sclk;			// To gprf of t5_gprf.v
    // End of automatics
    /*AUTOWIRE*/
-
-   input [XLEN-1:0] 	dwb_dti;
-   input [XLEN-1:0] 	malu;
-   input [XLEN-1:0] 	mpc;
 
    // TODO: Add special function registers
       

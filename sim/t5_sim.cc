@@ -9,9 +9,11 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <iterator>
+#include <algorithm>
 
 #define RAMSIZE 1<<16 // 64k words
-std::vector<char> buf(RAMSIZE);
+#define TRACE
 
 // Command line arguments
 // 1 - BIN FILE
@@ -30,9 +32,11 @@ int main(int argc, char** argv, char** env) {
   cpu = new Vt5_rv32i;
 
   // LOAD RAM
-  std::cout << "BIN:" << argv[1] << std::endl;
+  std::cout << "BIN:" << argv[1];
   std::ifstream bin(argv[1], std::ios::binary);
-  bin.read(buf.data(), RAMSIZE);
+  std::vector<char> buf(std::istreambuf_iterator<char>{bin}, {});
+  std::cout << "(" << buf.size() << ")" << std::endl;  
+  buf.resize(RAMSIZE);  
   bin.close();
 
   uint32_t * ram = (uint32_t*) buf.data();
@@ -43,7 +47,6 @@ int main(int argc, char** argv, char** env) {
   VerilatedVcdC* tfp = new VerilatedVcdC;
   cpu->trace(tfp, 99);
   tfp->open("dump.vcd");
-  std::cout << "VCD:" << argv[2] << std::endl;  
 #endif
   
   // RESET
@@ -51,8 +54,12 @@ int main(int argc, char** argv, char** env) {
   
   cpu->sys_rst = 1;
   cpu->sys_ena = 1;
-  cpu->sys_clk = 0;  
-  cpu->eval();
+  cpu->sys_clk = 0;
+  cpu->sexe = 0;
+  //  cpu->iwb_ack = 1;  
+  for (cnt=0; !Verilated::gotFinish() && cnt < 10; cnt++) {
+    cpu->eval();
+  }
 #ifdef TRACE
   tfp->dump(0);
 #endif
@@ -60,15 +67,22 @@ int main(int argc, char** argv, char** env) {
   // RUN
   uint32_t iadr, dadr, dat, wadr;
   std::cout << "START SIM" << std::endl;
-  for (cnt = 10; !Verilated::gotFinish() && cnt < 10000; cnt += 10) {
+  for (cnt = 10; !Verilated::gotFinish() && cnt < 20000; cnt += 10) {
+    //    std::cerr << "PC " << std::hex << cpu->iwb_adr << std::endl;
+    cpu->sys_clk = 0;
+    cpu->eval();
     // Rising Edge
     if (!cpu->sys_rst) {
       iadr = cpu->iwb_adr;
+      if (iadr << 2 >= buf.size()) break;
 
       if (cpu->dwb_stb) {
 	dadr = cpu->dwb_adr;
+	if (dadr << 2 >= buf.size()) break;
+
 	// RAM WRITE
 	if (cpu->dwb_wre && cpu->dwb_ack) {
+
 	  dat = ram[dadr];
 	  
 	  switch(cpu->dwb_sel) {
@@ -79,11 +93,10 @@ int main(int argc, char** argv, char** env) {
 	  case 0x2: dat = (dat & 0xFFFF00FF) | (cpu->dwb_dto & 0x0000FF00); break;
 	  case 0x4: dat = (dat & 0xFF00FFFF) | (cpu->dwb_dto & 0x00FF0000); break;
 	  case 0x8: dat = (dat & 0x00FFFFFF) | (cpu->dwb_dto & 0xFF000000); break;
-	  default: dat = std::rand(); // replace with random
 	  }	  
 
 	  ram[dadr] = dat;
-	  std::cerr << "W " << std::hex << (dadr << 2) << "<=" << std::setfill('0') << std::setw(8) << std::hex << dat << std::endl;
+	  std::cout << "W " << std::hex << (dadr << 2) << "<=" << std::setfill('0') << std::setw(8) << std::hex << dat << std::endl;
 
 	}
 
@@ -101,10 +114,12 @@ int main(int argc, char** argv, char** env) {
     tfp->dump(cnt);
 #endif
     
+    cpu->sys_clk = 1;
+    cpu->eval();
     // Falling Edge
     if (!cpu->sys_rst) {
-      if (iadr << 2 > buf.size()) break;      
-      cpu->iwb_dat = ram[iadr];
+      if (cpu->iwb_stb)
+	cpu->iwb_dat = ram[iadr];
 
       if (cpu->dwb_stb) {
 	cpu->dwb_dti = ram[dadr];
@@ -123,7 +138,7 @@ int main(int argc, char** argv, char** env) {
       break;
     }
   }
-
+  
   // DUMP SIGNATURE
   uint32_t signa, signo;
   std::stringstream ss;
@@ -139,6 +154,7 @@ int main(int argc, char** argv, char** env) {
   
   for(uint32_t adr = signa; adr < signo; adr += 16) {
     for(uint32_t xadr = adr + 13; xadr > adr; xadr -= 4) {
+      if (xadr >= buf.size()) break;
       out << std::setfill('0') << std::setw(8) << std::hex << ram[xadr >> 2];
     }
     out << std::endl;

@@ -18,8 +18,7 @@ module t5_data (/*AUTOARG*/
    // Outputs
    dwb_adr, dwb_dto, dwb_sel, dwb_wre, dwb_stb, xsel, xstb, xwre,
    // Inputs
-   dwb_dti, dwb_ack, xbpc, xdat, dopc, dfn3, dcp1, dcp2, sclk, srst,
-   sena
+   xbpc, xdat, dopc, dfn3, dcp1, dcp2, sclk, srst, sena
    );
    parameter XLEN = 32;
    
@@ -30,12 +29,14 @@ module t5_data (/*AUTOARG*/
 		 dwb_stb;
    
    output [3:0]  xsel;
-   output 	 xstb, xwre;   
+   output [1:0]  xstb;   
+   output 	 xwre;   
    
-   input [31:0]  dwb_dti;
-   input 	 dwb_ack;
+//   input [31:0]  dwb_dti;
+//   input 	 dwb_ack;
    
-   input [31:0]  xbpc, xdat;
+   input [31:2]  xbpc;
+   input [31:0]  xdat;
    
    input [6:2] 	 dopc;
    input [14:12] dfn3;
@@ -65,24 +66,33 @@ module t5_data (/*AUTOARG*/
 	  4'h4: xsel <= 4'h3;// H0
 	  4'h6: xsel <= 4'hC;// H2
 	  4'h8: xsel <= 4'hF;// W0
-	  default: xsel <= 4'hX;	  
+	  default: xsel <= 4'h0; // misalign	  
 	endcase // case ({dfn3[1:0],xadd[1:0]})	
      end
 
    // BUS CONTROL
-   reg 			    xstb;
+   reg [1:0]		    xstb;
    reg 			    xwre;
-   assign dwb_stb = xstb;
+   assign dwb_stb = xstb[1];
    assign dwb_wre = xwre;
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	xstb <= 1'h0;
+	xstb <= 2'h0;
 	xwre <= 1'h0;
 	// End of automatics
      end else if (sena) begin
-	xstb <= !dopc[6] & !dopc[4] & !dopc[2];	
+	xstb[1] <= !dopc[6] & !dopc[4] & !dopc[2];
+	case ({dfn3[13:12],xoff[1:0]})
+	  4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h6, 4'h8: begin
+	     xstb[0] <= 1'b0;
+	  end
+	  default: begin // misaligned
+	     xstb[0] <= 1'b1;
+
+	  end
+	endcase // case ({dfn3[13:12],xoff[1:0]})	
 	xwre <= dopc[5];
      end
 
