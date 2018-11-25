@@ -18,7 +18,7 @@ module t5_inst(/*AUTOARG*/
    // Outputs
    fpc, iwb_adr, iwb_wre, iwb_stb, iwb_sel, fhart, mhart, dhart,
    // Inputs
-   xbpc, xpc, xbra, xsel, xstb, sclk, sena, srst, mtvec
+   xbpc, xpc, xbra, xsel, xstb, sclk, sena, srst, mtvec, mepc
    );
 
    parameter XLEN = 32;
@@ -37,7 +37,7 @@ module t5_inst(/*AUTOARG*/
    input [1:0]	 xstb;
    
    input 	 sclk, sena, srst;
-   input [31:0]  mtvec;   
+   input [31:0]  mtvec,mepc;   
 
    assign iwb_sel = 4'hF;
    assign iwb_wre = 1'b0;
@@ -84,6 +84,7 @@ module t5_inst(/*AUTOARG*/
 	
 	case ({xbra,&xstb})
 	  3'b110,3'b001: iwb_adr <= mtvec[31:2]; // misaligned
+	  3'b010: iwb_adr <= mepc[31:2]; 	  
 	  3'b100: iwb_adr <= xbpc[31:2]; // Branch
 	  default: iwb_adr <= xpc[31:2]; // PC4	 
 	endcase // case (bra)

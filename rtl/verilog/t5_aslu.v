@@ -16,7 +16,7 @@
 
 module t5_aslu (/*AUTOARG*/
    // Outputs
-   xfn3, malu, xbpc, xbra, xstb, xdat, xopc, mtvec,
+   xfn3, malu, xbpc, xbra, xstb, xdat, xopc, mtvec, mepc,
    // Inputs
    xepc, dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, dhart, xwre,
    dexc, dcsr, dsub, dbra, djmp, sclk, srst, sena
@@ -30,7 +30,7 @@ module t5_aslu (/*AUTOARG*/
       
    output [31:0]  xdat;
    output [6:2]   xopc;
-   output [31:0]  mtvec;   
+   output [31:0]  mtvec,mepc;   
 
    input [31:2]   xepc;   
    input [31:0]   dop1, dop2;
@@ -183,7 +183,7 @@ module t5_aslu (/*AUTOARG*/
      CSR_MHARTID = 12'hF14;
    
    reg [31:0] mepc;
-   reg [2:0]  mcause;   
+   reg [3:0]  mcause;   
    reg [31:0] medeleg, mtvec, mtval;
    reg [31:0] mscratch;  // FIXME: hart-local
    
@@ -213,7 +213,7 @@ module t5_aslu (/*AUTOARG*/
        CSR_MEPC: rcsr = {mepc[31:2], 2'd0};
        CSR_MTVAL: rcsr = mtval;
        CSR_MTVEC: rcsr = mtvec;
-       CSR_MCAUSE: rcsr = {29'd0,mcause};       
+       CSR_MCAUSE: rcsr = {28'd0,mcause};       
        default: rcsr = {(XLEN){1'b0}};	  
      endcase // case (dop2[31:20])
 
@@ -229,7 +229,7 @@ module t5_aslu (/*AUTOARG*/
    
       
    // BRANCH
-   wire 	  wbra = dexc | (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
+   wire 	  wbra = (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
    wire 	  balign = (|xadr[1:0] & dbra) | (djmp & xadr[1]); // misaligned
    always @(posedge sclk)
      if (srst) begin
@@ -238,7 +238,7 @@ module t5_aslu (/*AUTOARG*/
 	xbra <= 2'h0;
 	// End of automatics
      end else if (sena) begin
-	xbra <= {wbra,balign};	
+	xbra <= {wbra|(dexc & !dcp2[21]),balign|dexc};	
      end
    
    reg [31:0] xbpc;
@@ -307,6 +307,8 @@ module t5_aslu (/*AUTOARG*/
    // misalign
    reg [1:0]	  xbra;
    reg [1:0] 	  xoff;
+   reg 		  xexc;
+   
    wire 	  wtval = (dcp2[31:20] == CSR_MTVAL) & wecsr;   
    wire 	  wepc = (dcp2[31:20] == CSR_MEPC) & wecsr;
    wire 	  wcause =  (dcp2[31:20] == CSR_MCAUSE) & wecsr;
@@ -315,9 +317,10 @@ module t5_aslu (/*AUTOARG*/
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	mcause <= 3'h0;
+	mcause <= 4'h0;
 	mepc <= 32'h0;
 	mtval <= 32'h0;
+	xexc <= 1'h0;
 	xoff <= 2'h0;
 	// End of automatics
      end else if (sena) begin
@@ -327,10 +330,11 @@ module t5_aslu (/*AUTOARG*/
 	  default: mepc <= mepc;	  
 	endcase // case (xbra)
 
-	case({&xbra|wcause,&xstb|wcause})
-	  2'b11: mcause <= wcsr[2:0];	  
-	  2'b10: mcause <= 3'o0;
-	  2'b01: mcause <= {1'b1, xwre, 1'b0};	  
+	case({xexc,&xbra|wcause,&xstb|wcause})
+	  3'b011: mcause <= wcsr[3:0];	  
+	  3'b010: mcause <= 4'h0;
+	  3'b110: mcause <= 4'hB;	  
+	  3'b001: mcause <= {2'o0, xwre, 1'b0};	  
 	  default: mcause <= mcause;	  
 	endcase // case (xbra)
 
@@ -340,7 +344,8 @@ module t5_aslu (/*AUTOARG*/
 	  default: mtval <= mtval;	  
 	endcase // case (xbra)
 
-	xoff <= (djmp) ? {xadr[1],1'b0} : xadr[1:0];	
+	xoff <= (djmp) ? {xadr[1],1'b0} : xadr[1:0];
+	xexc <= dexc;	
      end
    
 endmodule // t5_aslu
