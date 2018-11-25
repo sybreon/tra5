@@ -5,7 +5,7 @@ module dpram (/*AUTOARG*/
    // Outputs
    dat_o, xdat_o,
    // Inputs
-   adr_i, dat_i, wre_i, xadr_i, xdat_i, xwre_i, clk_i, ena_i
+   adr_i, dat_i, wre_i, xadr_i, clk_i, ena_i
    ) ;
    parameter AW = 5; // 32
    parameter DW = 2; // x2
@@ -19,8 +19,8 @@ module dpram (/*AUTOARG*/
    // PORT X - READ ONLY
    output [DW-1:0] xdat_o;  
    input [AW-1:0]  xadr_i;
-   input [DW-1:0]  xdat_i;
-   input 	   xwre_i;
+//   input [DW-1:0]  xdat_i;
+//   input 	   xwre_i;
    
    // SYSCON
    input 	   clk_i, 
@@ -34,20 +34,6 @@ module dpram (/*AUTOARG*/
    
    assign 	   dat_o = rRAM[adr_i];
    assign 	   xdat_o = rRAM[xadr_i];   
-   
-   // --- SIMULATION ONLY ------------------------------------
-   // synopsys translate_off
-   integer 	   i;
-   initial begin
-      for (i=0; i<(1<<AW); i=i+1) 
-	begin
-	   if ((i & 32'h1F) == 2)
-	     rRAM[i] = 32'h00010000;
-	   else
-	     rRAM[i] = 32'd0;
-	end
-   end
-   // synopsys translate_on
    
 endmodule // dpram
 
