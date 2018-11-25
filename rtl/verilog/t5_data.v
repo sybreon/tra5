@@ -24,7 +24,8 @@ module t5_data (/*AUTOARG*/
    
    output [31:2] dwb_adr;
    output [31:0] dwb_dto;
-   output [3:0]  dwb_sel;   
+   output [3:0]  dwb_sel;
+
    output 	 dwb_wre,
 		 dwb_stb;
    
@@ -73,6 +74,7 @@ module t5_data (/*AUTOARG*/
    // BUS CONTROL
    reg [1:0]		    xstb;
    reg 			    xwre;
+
    assign dwb_stb = xstb[1];
    assign dwb_wre = xwre;
    always @(posedge sclk)
@@ -84,6 +86,7 @@ module t5_data (/*AUTOARG*/
 	// End of automatics
      end else if (sena) begin
 	xstb[1] <= !dopc[6] & !dopc[4] & !dopc[2];
+
 	case ({dfn3[13:12],xoff[1:0]})
 	  4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h6, 4'h8: begin
 	     xstb[0] <= 1'b0;

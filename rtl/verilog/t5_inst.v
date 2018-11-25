@@ -16,7 +16,7 @@
 
 module t5_inst(/*AUTOARG*/
    // Outputs
-   fpc, iwb_adr, iwb_stb, iwb_wre, iwb_sel, fhart, mhart, dhart,
+   fpc, iwb_adr, iwb_wre, iwb_stb, iwb_sel, fhart, mhart, dhart,
    // Inputs
    xbpc, xpc, xbra, xsel, xstb, sclk, sena, srst, mtvec
    );
@@ -25,7 +25,8 @@ module t5_inst(/*AUTOARG*/
 
    output [31:0] fpc;   
    output [31:2] iwb_adr;
-   output 	 iwb_stb, iwb_wre;
+   output 	 iwb_wre;
+   output 	 iwb_stb;   
    output [3:0]  iwb_sel;
    output [1:0]  fhart, mhart, dhart;
    
@@ -71,17 +72,15 @@ module t5_inst(/*AUTOARG*/
 
    // FETCH ADDRESS
    reg [31:2]    iwb_adr;
-   reg 		 iwb_stb;
+   assign iwb_stb = sena;   
    
    always @(posedge sclk)
      if (srst) begin
        /*AUTORESET*/
        // Beginning of autoreset for uninitialized flops
        iwb_adr <= 30'h0;
-       iwb_stb <= 1'h0;
        // End of automatics
      end else if (sena) begin
-	iwb_stb <= 1'b1;
 	
 	case ({xbra,&xstb})
 	  3'b110,3'b001: iwb_adr <= mtvec[31:2]; // misaligned
