@@ -16,8 +16,8 @@
 
 module t5_rv32i (/*AUTOARG*/
    // Outputs
-   xwre, xepc, mpc, iwb_wre, iwb_stb, iwb_sel, iwb_adr, dwb_wre,
-   dwb_stb, dwb_sel, dwb_dto, dwb_adr,
+   mpc, iwb_wre, iwb_stb, iwb_sel, iwb_adr, dwb_wre, dwb_stb, dwb_sel,
+   dwb_dto, dwb_adr,
    // Inputs
    sys_rst, sys_ena, sys_clk, sexe, iwb_dat, dwb_dti, dwb_ack
    );
@@ -34,8 +34,6 @@ module t5_rv32i (/*AUTOARG*/
    output		iwb_stb;		// From inst of t5_inst.v
    output		iwb_wre;		// From inst of t5_inst.v
    output [31:2]	mpc;			// From ctrl of t5_ctrl.v
-   output [31:2]	xepc;			// From ctrl of t5_ctrl.v
-   output		xwre;			// From data of t5_data.v
    // End of automatics
    /*AUTOINPUT*/
    // Beginning of automatic inputs (from unused autoinst inputs)
@@ -66,6 +64,7 @@ module t5_rv32i (/*AUTOARG*/
    wire [31:0]		fpc;			// From inst of t5_inst.v
    wire [31:0]		malu;			// From aslu of t5_aslu.v
    wire [1:0]		mhart;			// From inst of t5_inst.v
+   wire [31:0]		mtvec;			// From aslu of t5_aslu.v
    wire			mwre;			// From back of t5_back.v
    wire [4:0]		rd0a;			// From back of t5_back.v
    wire [31:0]		rd0d;			// From back of t5_back.v
@@ -79,11 +78,13 @@ module t5_rv32i (/*AUTOARG*/
    wire [31:2]		xbpc;			// From aslu of t5_aslu.v
    wire [1:0]		xbra;			// From aslu of t5_aslu.v
    wire [31:0]		xdat;			// From aslu of t5_aslu.v
+   wire [31:2]		xepc;			// From ctrl of t5_ctrl.v
    wire [14:12]		xfn3;			// From aslu of t5_aslu.v
    wire [6:2]		xopc;			// From aslu of t5_aslu.v
    wire [31:2]		xpc;			// From ctrl of t5_ctrl.v
    wire [3:0]		xsel;			// From data of t5_data.v
    wire [1:0]		xstb;			// From data of t5_data.v, ...
+   wire			xwre;			// From data of t5_data.v
    // End of automatics
    /*AUTOREG*/
 
@@ -99,7 +100,7 @@ module t5_rv32i (/*AUTOARG*/
 	 .sys_clk			(sys_clk),
 	 .sys_rst			(sys_rst),
 	 .sys_ena			(sys_ena),
-	 .xstb				(xstb),
+	 .xstb				(xstb[1:0]),
 	 .dwb_ack			(dwb_ack));
    
    
@@ -132,6 +133,7 @@ module t5_rv32i (/*AUTOARG*/
 	 .iwb_dat			(iwb_dat[11:7]),
 	 .xopc				(xopc[6:2]),
 	 .xfn3				(xfn3[14:12]),
+	 .xstb				(xstb[1:0]),
 	 .dwb_dti			(dwb_dti[31:0]),
 	 .xsel				(xsel[3:0]),
 	 .malu				(malu[31:0]),
@@ -160,7 +162,8 @@ module t5_rv32i (/*AUTOARG*/
 	 .xstb				(xstb[1:0]),
 	 .sclk				(sclk),
 	 .sena				(sena),
-	 .srst				(srst));
+	 .srst				(srst),
+	 .mtvec				(mtvec[31:0]));
 
    t5_data #(/*AUTOINSTPARAM*/
 	     // Parameters
@@ -198,7 +201,9 @@ module t5_rv32i (/*AUTOARG*/
 	 .xstb				(xstb[1:0]),
 	 .xdat				(xdat[31:0]),
 	 .xopc				(xopc[6:2]),
+	 .mtvec				(mtvec[31:0]),
 	 // Inputs
+	 .xepc				(xepc[31:2]),
 	 .dop1				(dop1[31:0]),
 	 .dop2				(dop2[31:0]),
 	 .dcp1				(dcp1[31:0]),
@@ -208,6 +213,7 @@ module t5_rv32i (/*AUTOARG*/
 	 .dfn3				(dfn3[14:12]),
 	 .xpc				(xpc[31:2]),
 	 .dhart				(dhart[1:0]),
+	 .xwre				(xwre),
 	 .dexc				(dexc),
 	 .dcsr				(dcsr),
 	 .dsub				(dsub),

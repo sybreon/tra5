@@ -163,12 +163,13 @@ module t5_ctrl (/*AUTOARG*/
    
    // PC PIPELINE
    reg [31:2]    dpc, xpc, mpc;
-   reg [31:2]    xepc;   
+   reg [31:2]    xepc, depc;   
    wire [31:2]   npc = fpc[31:2] + 1; // PC+4
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
+	depc <= 30'h0;
 	dpc <= 30'h0;
 	mpc <= 30'h0;
 	xepc <= 30'h0;
@@ -177,8 +178,9 @@ module t5_ctrl (/*AUTOARG*/
      end else if (sena & rv32) begin
 	mpc <= xpc;
 	xpc <= dpc;
-	dpc <= npc; // standard increment
-	xepc <= fpc[31:2];	
+	dpc <= npc;	
+	xepc <= depc;	
+	depc <= fpc[31:2];	
      end	 
    
 endmodule // t5_ctrl

@@ -16,10 +16,10 @@
 
 module t5_aslu (/*AUTOARG*/
    // Outputs
-   xfn3, malu, xbpc, xbra, xstb, xdat, xopc,
+   xfn3, malu, xbpc, xbra, xstb, xdat, xopc, mtvec,
    // Inputs
-   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, dhart, dexc, dcsr,
-   dsub, dbra, djmp, sclk, srst, sena
+   xepc, dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, dhart, xwre,
+   dexc, dcsr, dsub, dbra, djmp, sclk, srst, sena
    );
    parameter XLEN = 32;
 
@@ -30,7 +30,9 @@ module t5_aslu (/*AUTOARG*/
       
    output [31:0]  xdat;
    output [6:2]   xopc;
-   
+   output [31:0]  mtvec;   
+
+   input [31:2]   xepc;   
    input [31:0]   dop1, dop2;
    input [31:0]   dcp1, dcp2;
    input [6:2] 	  dopc;
@@ -38,7 +40,8 @@ module t5_aslu (/*AUTOARG*/
    input [14:12]  dfn3;
    input [31:2]   xpc;
    input [1:0] 	  dhart;
- 	  
+   input 	  xwre;
+   
    input 	  dexc, dcsr, dsub, dbra, djmp;
    input 	  sclk, srst, sena;
    
@@ -180,6 +183,7 @@ module t5_aslu (/*AUTOARG*/
      CSR_MHARTID = 12'hF14;
    
    reg [31:0] mepc;
+   reg [2:0]  mcause;   
    reg [31:0] medeleg, mtvec, mtval;
    reg [31:0] mscratch;  // FIXME: hart-local
    
@@ -199,8 +203,8 @@ module t5_aslu (/*AUTOARG*/
      end
    
    // READ CSR
-   always @(/*AUTOSENSE*/dcp2 or dhart or medeleg or mepc or mscratch
-	    or mtval or mtvec)
+   always @(/*AUTOSENSE*/dcp2 or dhart or mcause or medeleg or mepc
+	    or mscratch or mtval or mtvec)
      case (dcp2[31:20])
        CSR_MHARTID: rcsr = {30'd0,dhart};
        CSR_MISA: rcsr = 32'h40000100;
@@ -208,7 +212,8 @@ module t5_aslu (/*AUTOARG*/
        CSR_MEDELEG: rcsr = medeleg;
        CSR_MEPC: rcsr = {mepc[31:2], 2'd0};
        CSR_MTVAL: rcsr = mtval;
-       CSR_MTVEC: rcsr = mtvec;       
+       CSR_MTVEC: rcsr = mtvec;
+       CSR_MCAUSE: rcsr = {29'd0,mcause};       
        default: rcsr = {(XLEN){1'b0}};	  
      endcase // case (dop2[31:20])
 
@@ -304,17 +309,30 @@ module t5_aslu (/*AUTOARG*/
    reg [1:0] 	  xoff;
    wire 	  wtval = (dcp2[31:20] == CSR_MTVAL) & wecsr;   
    wire 	  wepc = (dcp2[31:20] == CSR_MEPC) & wecsr;
+   wire 	  wcause =  (dcp2[31:20] == CSR_MCAUSE) & wecsr;
    
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
+	mcause <= 3'h0;
 	mepc <= 32'h0;
 	mtval <= 32'h0;
 	xoff <= 2'h0;
 	// End of automatics
      end else if (sena) begin
-	if (wepc) mepc <= wcsr; // FIXME: ECALL
+	case({&xbra|wepc,&xstb|wepc})
+	  2'b11: mepc <= wcsr;	  
+	  2'b10,2'b01: mepc <= {xepc, 2'd0};
+	  default: mepc <= mepc;	  
+	endcase // case (xbra)
+
+	case({&xbra|wcause,&xstb|wcause})
+	  2'b11: mcause <= wcsr[2:0];	  
+	  2'b10: mcause <= 3'o0;
+	  2'b01: mcause <= {1'b1, xwre, 1'b0};	  
+	  default: mcause <= mcause;	  
+	endcase // case (xbra)
 
 	case({&xbra|wtval,&xstb|wtval})
 	  2'b11: mtval <= wcsr;	  

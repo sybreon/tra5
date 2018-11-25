@@ -93,7 +93,6 @@ int main(int argc, char** argv, char** env) {
 	  case 0x2: dat = (dat & 0xFFFF00FF) | (cpu->dwb_dto & 0x0000FF00); break;
 	  case 0x4: dat = (dat & 0xFF00FFFF) | (cpu->dwb_dto & 0x00FF0000); break;
 	  case 0x8: dat = (dat & 0x00FFFFFF) | (cpu->dwb_dto & 0xFF000000); break;
-	  default: dat = std::rand(); // replace with random
 	  }	  
 
 	  ram[dadr] = dat;

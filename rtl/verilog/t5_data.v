@@ -66,7 +66,7 @@ module t5_data (/*AUTOARG*/
 	  4'h4: xsel <= 4'h3;// H0
 	  4'h6: xsel <= 4'hC;// H2
 	  4'h8: xsel <= 4'hF;// W0
-	  default: xsel <= 4'hX; // misalign	  
+	  default: xsel <= 4'h0; // misalign	  
 	endcase // case ({dfn3[1:0],xadd[1:0]})	
      end
 
@@ -85,10 +85,14 @@ module t5_data (/*AUTOARG*/
      end else if (sena) begin
 	xstb[1] <= !dopc[6] & !dopc[4] & !dopc[2];
 	case ({dfn3[13:12],xoff[1:0]})
-	  4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h6, 4'h8: xstb[0] <= 1'b0;	  
-	  default: xstb[0] <= 1'b1;	  
-	endcase // case ({dfn3[13:12],xoff[1:0]})
-	
+	  4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h6, 4'h8: begin
+	     xstb[0] <= 1'b0;
+	  end
+	  default: begin // misaligned
+	     xstb[0] <= 1'b1;
+
+	  end
+	endcase // case ({dfn3[13:12],xoff[1:0]})	
 	xwre <= dopc[5];
      end
 
