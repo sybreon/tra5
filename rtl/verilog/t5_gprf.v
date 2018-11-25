@@ -34,10 +34,8 @@ module t5_gprf(/*AUTOARG*/
     .dat_i(rd0d[XLEN-1:0]),
     .adr_i({mhart[1:0],rd0a[4:0]}),
     .wre_i(mwre),
-    .dat_o(),
-    
-    .xwre_i(1'b0),
-    .xdat_i({XLEN{1'bX}}),
+    .dat_o(),    
+
     .xadr_i({fhart[1:0],rs@a[4:0]}),
     .xdat_o(rs@d[XLEN-1:0]),
     ) */
@@ -55,8 +53,6 @@ module t5_gprf(/*AUTOARG*/
 	.dat_i				(rd0d[XLEN-1:0]),	 // Templated
 	.wre_i				(mwre),			 // Templated
 	.xadr_i				({fhart[1:0],rs1a[4:0]}), // Templated
-	.xdat_i				({XLEN{1'bX}}),		 // Templated
-	.xwre_i				(1'b0),			 // Templated
 	.clk_i				(sclk),			 // Templated
 	.ena_i				(1'b1));			 // Templated
    
@@ -73,8 +69,6 @@ module t5_gprf(/*AUTOARG*/
 	.dat_i				(rd0d[XLEN-1:0]),	 // Templated
 	.wre_i				(mwre),			 // Templated
 	.xadr_i				({fhart[1:0],rs2a[4:0]}), // Templated
-	.xdat_i				({XLEN{1'bX}}),		 // Templated
-	.xwre_i				(1'b0),			 // Templated
 	.clk_i				(sclk),			 // Templated
 	.ena_i				(1'b1));			 // Templated
       

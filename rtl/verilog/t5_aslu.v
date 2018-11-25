@@ -16,17 +16,17 @@
 
 module t5_aslu (/*AUTOARG*/
    // Outputs
-   xfn3, malu, xbpc, xbra, xdat, xopc,
+   xfn3, malu, xbpc, xbra, xstb, xdat, xopc,
    // Inputs
-   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, dexc, dcsr, dsub,
-   fhart, sclk, srst, sena
+   dop1, dop2, dcp1, dcp2, dopc, dfn7, dfn3, xpc, dhart, dexc, dcsr,
+   dsub, dbra, djmp, sclk, srst, sena
    );
    parameter XLEN = 32;
 
    output [14:12] xfn3; 	     
    output [31:0]  malu;
-   output [31:0]  xbpc;
-   output 	  xbra;
+   output [31:2]  xbpc;
+   output [1:0]	  xbra, xstb;
       
    output [31:0]  xdat;
    output [6:2]   xopc;
@@ -36,10 +36,10 @@ module t5_aslu (/*AUTOARG*/
    input [6:2] 	  dopc;
    input [31:25]  dfn7;
    input [14:12]  dfn3;
-   input [31:0]   xpc;
-   
-   input 	  dexc, dcsr, dsub;
-   input [1:0] 	  fhart;   
+   input [31:2]   xpc;
+   input [1:0] 	  dhart;
+ 	  
+   input 	  dexc, dcsr, dsub, dbra, djmp;
    input 	  sclk, srst, sena;
    
    // OPCODE PIPELINE
@@ -59,9 +59,9 @@ module t5_aslu (/*AUTOARG*/
      end
 
    // ADD30
-   reg [31:2] xadr;
+   reg [31:0] xadr;
    always @(/*AUTOSENSE*/dcp1 or dcp2)
-     xadr = dcp1[31:2] + dcp2[31:2];   
+     xadr = dcp1 + dcp2;   
    
    // ADD32
    reg [32:0]    xadd;
@@ -147,7 +147,7 @@ module t5_aslu (/*AUTOARG*/
 
    reg [31:0] xset;
    always @(/*AUTOSENSE*/xadd) begin
-     xset = {31'd0, xadd[31]};
+     xset = {31'd0, xadd[32]};
    end
 
    // CSR
@@ -172,12 +172,15 @@ module t5_aslu (/*AUTOARG*/
      CSR_MEDELEG = 12'h302,
      CSR_MIDELEG = 12'h303,
      CSR_MIE = 12'h304,
+     CSR_MTVEC = 12'h305,
+     CSR_MTVAL = 12'h343,
+     CSR_MCAUSE = 12'h342,
      CSR_MSCRATCH = 12'h340,
      CSR_MEPC = 12'h341,
      CSR_MHARTID = 12'hF14;
    
    reg [31:0] mepc;
-   reg [31:0] medeleg;
+   reg [31:0] medeleg, mtvec, mtval;
    reg [31:0] mscratch;  // FIXME: hart-local
    
    // WRITE CSR
@@ -188,17 +191,19 @@ module t5_aslu (/*AUTOARG*/
 	medeleg <= 32'h0;
 	mepc <= 32'h0;
 	mscratch <= 32'h0;
+	mtvec <= 32'h0;
 	// End of automatics
      end else if (sena & wecsr) begin
 	if (dcp2[31:20] == CSR_MEPC) mepc <= wcsr; // FIXME: ECALL
 	if (dcp2[31:20] == CSR_MEDELEG) medeleg <= wcsr;
-	if (dcp2[31:20] == CSR_MSCRATCH) mscratch <= wcsr;	
+	if (dcp2[31:20] == CSR_MSCRATCH) mscratch <= wcsr;
+	if (dcp2[31:20] == CSR_MTVEC) mtvec <= wcsr;
      end
    
    // READ CSR
-   always @(/*AUTOSENSE*/dcp1 or dcp2 or medeleg or mepc or mscratch)
+   always @(/*AUTOSENSE*/dcp2 or dhart or medeleg or mepc or mscratch)
      case (dcp2[31:20])
-       CSR_MHARTID: rcsr = {30'd0,dcp1[1:0]};
+       CSR_MHARTID: rcsr = {30'd0,dhart};
        CSR_MISA: rcsr = 32'h40000100;
        CSR_MSCRATCH: rcsr = mscratch;       
        CSR_MEDELEG: rcsr = medeleg;
@@ -218,19 +223,16 @@ module t5_aslu (/*AUTOARG*/
    
       
    // BRANCH
-   reg 		  xbra;
-   reg [1:0] 	  xlnk;
-   
+   wire 	  wbra = dexc | (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
+   wire 	  balign = |xadr[1:0] & (dbra | djmp); // misaligned
    always @(posedge sclk)
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	xbra <= 1'h0;
-	xlnk <= 2'h0;
+	xbra <= 2'h0;
 	// End of automatics
      end else if (sena) begin
-	xbra <= dexc | (dopc[6] & dopc[5] & !dopc[4] & (dopc[2] | xcmp)); // BRANCH
-	xlnk <= {xlnk[0], dopc[6] & dopc[5] & dopc[2]}; // LINK	
+	xbra <= {wbra,balign};	
      end
    
    reg [31:0] xbpc;
@@ -240,16 +242,16 @@ module t5_aslu (/*AUTOARG*/
      if (srst) begin
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
-	xbpc <= 32'h0;
+	xbpc <= 30'h0;
 	xdat <= 32'h0;
 	xmov <= 32'h0;
 	// End of automatics
      end else if (sena) begin
 	// ADDRESS CALC
 	case ({dexc,dcp2[21]})
-	  2'b11: xbpc <= mepc; // RET
-	  2'b10: xbpc <= 32'hX; // ECALL FIXME:
-	  default: xbpc <= {xadr,2'd0};
+	  2'b11: xbpc <= mepc[31:2]; // RET
+	  2'b10: xbpc <= 30'hX; // ECALL FIXME:
+	  default: xbpc <= {xadr[31:2]};
 	endcase // case ({dexc,dcp2[21]})
 	
 	// OPERAND CALC
@@ -276,8 +278,8 @@ module t5_aslu (/*AUTOARG*/
      end else if (sena) begin
 	case ({xopc[6],xopc[5],xopc[4],xopc[2]})
 	  4'b0111: malu <= xmov; // LUI
-	  4'b1101: malu <= {xpc[XLEN-1:2],2'd0}; // JAL/R       
-	  4'b0011: malu <= {xbpc[XLEN-1:2],2'd0}; // AUIPC
+	  4'b1101: malu <= {xpc[31:2],2'd0}; // JAL/R       
+	  4'b0011: malu <= {xbpc[31:2],2'd0}; // AUIPC
 	  4'b0010,4'b0110: malu <= xalu; // ALU
 	  4'b1110: malu <= xcsr;       
 	  default: malu <= 32'hX;       
@@ -296,5 +298,22 @@ module t5_aslu (/*AUTOARG*/
      end
    
 
+   // misalign
+   reg [1:0]	  xbra;
+   reg [1:0] 	  xoff;	  
+   always @(posedge sclk)
+     if (srst) begin
+	/*AUTORESET*/
+	// Beginning of autoreset for uninitialized flops
+	mtval <= 32'h0;
+	xoff <= 2'h0;
+	// End of automatics
+     end else if (sena) begin
+	case({&xbra,&xstb})
+	  2'b10, 2'b01: mtval <= {xbpc, xoff};
+	  default: mtval <= mtval;	  
+	endcase // case (xbra)
+	xoff <= xadr[1:0];	
+     end
    
 endmodule // t5_aslu

@@ -16,9 +16,9 @@
 
 module t5_inst(/*AUTOARG*/
    // Outputs
-   fpc, iwb_adr, iwb_stb, iwb_wre, iwb_sel, fhart, mhart,
+   fpc, iwb_adr, iwb_stb, iwb_wre, iwb_sel, fhart, mhart, dhart,
    // Inputs
-   iwb_dat, xbpc, xpc, iwb_ack, xbra, sclk, sena, srst
+   xbpc, xpc, xbra, xsel, xstb, sclk, sena, srst
    );
 
    parameter XLEN = 32;
@@ -27,55 +27,66 @@ module t5_inst(/*AUTOARG*/
    output [31:2] iwb_adr;
    output 	 iwb_stb, iwb_wre;
    output [3:0]  iwb_sel;
-   output [1:0]  fhart, mhart;
+   output [1:0]  fhart, mhart, dhart;
    
-   input [31:0]  iwb_dat;
-   input [31:0]  xbpc, xpc;   
-   input 	 iwb_ack;   
-   input 	 xbra, sclk, sena, srst;
+   input [31:2]  xbpc, xpc;   
+   input [1:0] 	 xbra;
+
+   input [3:0] 	 xsel;
+   input [1:0]	 xstb;
+   
+   input 	 sclk, sena, srst;
 
    assign iwb_sel = 4'hF;
    assign iwb_wre = 1'b0;
-   assign iwb_stb = 1'b1;   
    
    // HART SWITCHER
-   reg [1:0] 	     hart;   
-   assign mhart = hart;
-   
+   reg [1:0] 	     hart, dhart;
+   wire [1:0] 	     whart = {hart[0],!hart[1]};   
+   assign mhart = hart;   
    always @(posedge sclk)     
-     if (srst)
-       /*AUTORESET*/
-       // Beginning of autoreset for uninitialized flops
-       hart <= 2'h0;
-       // End of automatics
-     else if (sena)
-       hart <= {hart[0],!hart[1]}; // johnson counter to simplify resource usage
-   
+     if (srst) begin
+	dhart <= 2'h3;	
+	/*AUTORESET*/
+	// Beginning of autoreset for uninitialized flops
+	hart <= 2'h0;
+	// End of automatics
+     end else if (sena) begin
+	hart <= whart; // johnson counter to simplify resource usage
+	dhart <= ~whart;	
+     end
    // PC PIPELINE
-   reg [31:0]    fpc;   
+   reg [31:0]    fpc;
    assign fhart = fpc[1:0];
    always @(posedge sclk)
-     if (srst)
-       /*AUTORESET*/
-       // Beginning of autoreset for uninitialized flops
-       fpc <= 32'h0;
-       // End of automatics
-     else if (sena)
-       fpc <= {iwb_adr, hart};
+     if (srst) begin
+	/*AUTORESET*/
+	// Beginning of autoreset for uninitialized flops
+	fpc <= 32'h0;
+	// End of automatics
+     end else if (sena) begin 
+	fpc <= {iwb_adr, hart};
+     end
 
    // FETCH ADDRESS
    reg [31:2]    iwb_adr;
+   reg 		 iwb_stb;
+   
    always @(posedge sclk)
-     if (srst)
+     if (srst) begin
        /*AUTORESET*/
        // Beginning of autoreset for uninitialized flops
        iwb_adr <= 30'h0;
+       iwb_stb <= 1'h0;
        // End of automatics
-     else if (sena) begin
-       case (xbra)
-	 1'b1: iwb_adr <= xbpc[XLEN-1:2];
-	 default: iwb_adr <= xpc[XLEN-1:2]; // PC4	 
-       endcase // case (bra)
+     end else if (sena) begin
+	iwb_stb <= 1'b1;
+	
+	case ({xbra,&xstb})
+	  3'b110,3'b001: iwb_adr <= 30'h0C4; // misaligned
+	  3'b100: iwb_adr <= xbpc[XLEN-1:2]; // Branch
+	  default: iwb_adr <= xpc[XLEN-1:2]; // PC4	 
+	endcase // case (bra)
      end
    
 endmodule // t5_inst
