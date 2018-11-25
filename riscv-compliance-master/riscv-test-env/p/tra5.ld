@@ -5,6 +5,7 @@ SECTIONS
 {
   . = 0x00000000;
   .text.init : { *(.text.init) }
+  .trap_handler : { *(.trap_handler) }
   . = ALIGN(0x1000);
   .tohost : { *(.tohost) }
   . = ALIGN(0x1000);
