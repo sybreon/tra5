@@ -67,8 +67,8 @@ int main(int argc, char** argv, char** env) {
   // RUN
   uint32_t iadr, dadr, dat, wadr;
   std::cout << "START SIM" << std::endl;
-  for (cnt = 10; !Verilated::gotFinish() && cnt < 200000; cnt += 10) {
-    //    std::cerr << "PC " << std::hex << cpu->iwb_adr << std::endl;
+  for (cnt = 10; !Verilated::gotFinish() && cnt < 400000; cnt += 10) {
+    //    std::cout << "PC " << std::hex << cpu->iwb_adr << std::endl;
     cpu->sys_clk = 0;
     cpu->eval();
     // Rising Edge
@@ -76,7 +76,7 @@ int main(int argc, char** argv, char** env) {
       if (cpu->iwb_stb)
 	iadr = cpu->iwb_adr & 0x1FFFFFFF;
       if (iadr << 2 >= buf.size()) {
-	std::cerr << "ERR IADR " << std::hex << iadr << std::endl;
+	std::cout << "ERR IADR " << std::hex << iadr << std::endl;
 	break;
       }
 
@@ -104,7 +104,8 @@ int main(int argc, char** argv, char** env) {
 	    // IO
 	    dat = cpu->dwb_dto;	    
 	    
-	    switch(dadr) {
+	    switch(dadr << 2) {
+	    case 0x40002000: std::cerr << (char)(dat & 0x0FF);
 	    default:	      
 	      std::cout << "IO " << std::hex << (dadr << 2) << "<=" << std::setfill('0') << std::setw(8) << std::hex << dat << std::endl;
 	    }
@@ -116,7 +117,7 @@ int main(int argc, char** argv, char** env) {
 	    std::cout << "LD " << std::hex << (dadr << 2) << "=>" << std::setfill('0') << std::setw(8) << std::hex << cpu->dwb_dti <<std::endl;
 	  } else {
 	    switch(dadr << 2)	      {
-	    case 0x40000000: cpu->dwb_dti = cnt;	      
+	    case 0x40000000: cpu->dwb_dti = cnt;
 	    }
 	    
 	    std::cout << "IO " << std::hex << (dadr << 2) << "=>" << std::setfill('0') << std::setw(8) << std::hex << cpu->dwb_dti <<std::endl;	  }
@@ -155,8 +156,8 @@ int main(int argc, char** argv, char** env) {
 #endif
     
     if (cpu->iwb_dat == 0x073) {
-      std::cerr << "ECALL END" << std::endl;
-      break;
+      std::cout << "ECALL END" << std::endl;
+      //break;
     }
   }
   
@@ -176,7 +177,7 @@ int main(int argc, char** argv, char** env) {
   for(uint32_t adr = signa; adr < signo; adr += 16) {
     for(uint32_t xadr = adr + 13; xadr > adr; xadr -= 4) {
       if (xadr >= buf.size()) {
-	std::cerr << "ERR XADR " << std::hex << xadr << std::endl;
+	std::cout << "ERR XADR " << std::hex << xadr << std::endl;
 	break;
       }
       out << std::setfill('0') << std::setw(8) << std::hex << ram[xadr >> 2];
