@@ -12,7 +12,7 @@
 #include <iterator>
 #include <algorithm>
 
-#define RAMSIZE 1<<16 // 64k words
+#define RAMSIZE 1<<20 // 64k words
 #define TRACE
 
 // Command line arguments
@@ -67,41 +67,60 @@ int main(int argc, char** argv, char** env) {
   // RUN
   uint32_t iadr, dadr, dat, wadr;
   std::cout << "START SIM" << std::endl;
-  for (cnt = 10; !Verilated::gotFinish() && cnt < 20000; cnt += 10) {
-    //    std::cerr << "PC " << std::hex << cpu->iwb_adr << std::endl;
+  for (cnt = 10; !Verilated::gotFinish() && cnt < 800000; cnt += 10) {
     cpu->sys_clk = 0;
     cpu->eval();
     // Rising Edge
     if (!cpu->sys_rst) {
-      iadr = cpu->iwb_adr;
-      if (iadr << 2 >= buf.size()) break;
+      if (cpu->iwb_stb)
+	iadr = cpu->iwb_adr & 0x1FFFFFFF;
+      if (iadr << 2 >= buf.size()) {
+	std::cout << "ERR IADR " << std::hex << iadr << std::endl;
+	break;
+      }
 
       if (cpu->dwb_stb) {
-	dadr = cpu->dwb_adr;
-	if (dadr << 2 >= buf.size()) break;
-
-	// RAM WRITE
+	dadr = cpu->dwb_adr & 0x1FFFFFFF;
 	if (cpu->dwb_wre && cpu->dwb_ack) {
-
-	  dat = ram[dadr];
-	  
-	  switch(cpu->dwb_sel) {
-	  case 0xF: dat = cpu->dwb_dto; break;
-	  case 0xC: dat = (dat & 0x0000FFFF) | (cpu->dwb_dto & 0xFFFF0000); break;
-	  case 0x3: dat = (dat & 0xFFFF0000) | (cpu->dwb_dto & 0x0000FFFF); break;
-	  case 0x1: dat = (dat & 0xFFFFFF00) | (cpu->dwb_dto & 0x000000FF); break;
-	  case 0x2: dat = (dat & 0xFFFF00FF) | (cpu->dwb_dto & 0x0000FF00); break;
-	  case 0x4: dat = (dat & 0xFF00FFFF) | (cpu->dwb_dto & 0x00FF0000); break;
-	  case 0x8: dat = (dat & 0x00FFFFFF) | (cpu->dwb_dto & 0xFF000000); break;
-	  }	  
-
-	  ram[dadr] = dat;
-	  std::cout << "W " << std::hex << (dadr << 2) << "<=" << std::setfill('0') << std::setw(8) << std::hex << dat << std::endl;
-
+	  // RAM WRITE
+	  if (dadr << 2 < buf.size()) {
+	    if (dadr == 0x400) break; // COMPLIANCE TEST END
+	    dat = ram[dadr];
+	    
+	    switch(cpu->dwb_sel) {
+	    case 0xF: dat = cpu->dwb_dto; break;
+	    case 0xC: dat = (dat & 0x0000FFFF) | (cpu->dwb_dto & 0xFFFF0000); break;
+	    case 0x3: dat = (dat & 0xFFFF0000) | (cpu->dwb_dto & 0x0000FFFF); break;
+	    case 0x1: dat = (dat & 0xFFFFFF00) | (cpu->dwb_dto & 0x000000FF); break;
+	    case 0x2: dat = (dat & 0xFFFF00FF) | (cpu->dwb_dto & 0x0000FF00); break;
+	    case 0x4: dat = (dat & 0xFF00FFFF) | (cpu->dwb_dto & 0x00FF0000); break;
+	    case 0x8: dat = (dat & 0x00FFFFFF) | (cpu->dwb_dto & 0xFF000000); break;
+	    }	  
+	    
+	    ram[dadr] = dat;
+	    std::cout << "ST " << std::hex << (dadr << 2) << "<=" << std::setfill('0') << std::setw(8) << std::hex << dat << std::endl;
+	  } else {
+	    // IO
+	    dat = cpu->dwb_dto;	    
+	    
+	    switch(dadr << 2) {
+	    case 0x40002000: std::cerr << (char)(dat & 0x0FF);
+	    default:	      
+	      std::cout << "IO " << std::hex << (dadr << 2) << "<=" << std::setfill('0') << std::setw(8) << std::hex << dat << std::endl;
+	    }
+	  }
 	}
 
-	    if (!cpu->dwb_wre && cpu->dwb_ack) 
-	      std::cout << "R " << std::hex << (dadr << 2) << "=>" << std::setfill('0') << std::setw(8) << std::hex << cpu->dwb_dti <<std::endl;
+	if (!cpu->dwb_wre && cpu->dwb_ack) {
+	  if (dadr << 2 < buf.size()) {
+	    std::cout << "LD " << std::hex << (dadr << 2) << "=>" << std::setfill('0') << std::setw(8) << std::hex << cpu->dwb_dti <<std::endl;
+	  } else {
+	    switch(dadr << 2)	      {
+	    case 0x40000000: cpu->dwb_dti = cnt;
+	    }
+	    
+	    std::cout << "IO " << std::hex << (dadr << 2) << "=>" << std::setfill('0') << std::setw(8) << std::hex << cpu->dwb_dti <<std::endl;	  }
+	}
 	
       }
       
@@ -118,12 +137,13 @@ int main(int argc, char** argv, char** env) {
     cpu->eval();
     // Falling Edge
     if (!cpu->sys_rst) {
-      if (cpu->iwb_stb)
 	cpu->iwb_dat = ram[iadr];
-
-      if (cpu->dwb_stb) {
-	cpu->dwb_dti = ram[dadr];
-      }
+	if (dadr << 2 < buf.size()) 	  {	    
+	  cpu->dwb_dti = ram[dadr];
+	} else 	  {
+	  cpu->dwb_dti = 0;	  
+	}
+	
     }
     if (cnt == 50) cpu->sys_rst = 0;
 
@@ -133,10 +153,6 @@ int main(int argc, char** argv, char** env) {
     tfp->dump(cnt+1);
     tfp->flush();
 #endif
-    
-    if (cpu->iwb_dat == 0x073) {
-      break;
-    }
   }
   
   // DUMP SIGNATURE
@@ -154,7 +170,10 @@ int main(int argc, char** argv, char** env) {
   
   for(uint32_t adr = signa; adr < signo; adr += 16) {
     for(uint32_t xadr = adr + 13; xadr > adr; xadr -= 4) {
-      if (xadr >= buf.size()) break;
+      if (xadr >= buf.size()) {
+	std::cout << "ERR XADR " << std::hex << xadr << std::endl;
+	break;
+      }
       out << std::setfill('0') << std::setw(8) << std::hex << ram[xadr >> 2];
     }
     out << std::endl;
