@@ -1,0 +1,92 @@
+# Kconfig - BSD Sockets compatible API
+
+#
+# Copyright (c) 2017 Linaro Limited.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+menuconfig NET_SOCKETS
+	bool "BSD Sockets compatible API"
+	help
+	  Provide BSD Sockets like API on top of native Zephyr networking API.
+
+if NET_SOCKETS
+
+config NET_SOCKETS_POSIX_NAMES
+	bool "Standard POSIX names for Sockets API"
+	help
+	  By default, Sockets API function are prefixed with ``zsock_`` to avoid
+	  namespacing issues. If this option is enabled, they will be provided
+	  with standard POSIX names like socket(), recv(), and close(), to help
+	  with porting existing code. Note that close() may require a special
+	  attention, as in POSIX it closes any file descriptor, while with this
+	  option enabled, it will still apply only to sockets.
+
+config NET_SOCKETS_POLL_MAX
+	int "Max number of supported poll() entries"
+	default 3
+	help
+	  Maximum number of entries supported for poll() call.
+
+config NET_SOCKETS_SOCKOPT_TLS
+	bool "Enable TCP TLS socket option support [EXPERIMENTAL]"
+	select TLS_CREDENTIALS
+	help
+	  Enable TLS socket option support which automatically establishes
+	  a TLS connection to the remote host.
+
+config NET_SOCKETS_ENABLE_DTLS
+	bool "Enable DTLS socket support [EXPERIMENTAL]"
+	depends on NET_SOCKETS_SOCKOPT_TLS
+	select TLS_DTLS
+	help
+	  Enable DTLS socket support. By default only TLS over TCP is supported.
+
+config NET_SOCKETS_DTLS_TIMEOUT
+	int "Timeout value in milliseconds for DTLS connection"
+	default 5000
+	depends on NET_SOCKETS_ENABLE_DTLS
+	help
+	  This variable specifies time in milliseconds after which DTLS
+	  connection is considered dead by TLS server and DTLS resources are
+	  freed. This is needed to prevent situation when DTLS client shuts down
+	  without closing connection gracefully, which can prevent other peers
+	  from connecting. Value of 0 indicates no timeout - resources will be
+	  freed only when connection is gracefully closed by peer sending TLS
+	  notification or socket is closed.
+
+config NET_SOCKETS_TLS_MAX_CONTEXTS
+	int "Maximum number of TLS/DTLS contexts"
+	default 1
+	depends on NET_SOCKETS_SOCKOPT_TLS
+	help
+	  "This variable specifies maximum number of TLS/DTLS contexts that can
+	   be allocated at the same time."
+
+config NET_SOCKETS_TLS_MAX_CREDENTIALS
+	int "Maximum number of TLS/DTLS credentials per socket"
+	default 4
+	depends on NET_SOCKETS_SOCKOPT_TLS
+	help
+	  This variable sets maximum number of TLS/DTLS credentials that can be
+	  used with a specific socket.
+
+config NET_SOCKETS_TLS_MAX_CIPHERSUITES
+	int "Maximum number of TLS/DTLS ciphersuites per socket"
+	default 4
+	depends on NET_SOCKETS_SOCKOPT_TLS
+	help
+	  This variable sets maximum number of TLS/DTLS ciphersuites that can
+	  be used with specific socket, if set explicitly by socket option.
+	  By default, all ciphersuites that are available in the system are
+	  available to the socket.
+
+config NET_DEBUG_SOCKETS
+	bool "Debug BSD Sockets compatible API calls"
+	default y if NET_LOG_GLOBAL
+	help
+	  Enables logging for sockets code. (Logging level is defined by
+	  SYS_LOG_NET_LEVEL setting).
+
+endif # NET_SOCKETS
