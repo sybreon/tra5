@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Aeste Works (M) Sdn Bhd.
+ Copyright 2018 Shawn Tan <shawn.tan@aeste.my>
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
