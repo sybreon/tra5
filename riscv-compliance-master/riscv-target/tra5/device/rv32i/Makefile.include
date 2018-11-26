@@ -1,4 +1,4 @@
-TARGET_SIM ?= $(ROOTDIR)/../sim/obj_dir/Vt5_rv32i
+TARGET_SIM ?= $(ROOTDIR)/../sim/Vt5_rv32i.exe
 ifeq ($(shell command -v $(TARGET_SIM) 2> /dev/null),)
     $(error Target simulator executable '$(TARGET_SIM)` not found)
 endif
