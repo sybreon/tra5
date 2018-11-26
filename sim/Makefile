@@ -1,28 +1,17 @@
-# Copyright (C) 2011 Aeste Works (M) Sdn Bhd.
-
+# Shawn Tan
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+mkfile_dir := $(dir $(mkfile_path))
 TMP := $(shell mktemp -d)/v
-DMP := $(shell hostname)-$(shell date -I)
-RND := $(shell date +%N)
 
-VER = $(wildcard verilog/*.v)
+all:	rv32i clean
 
-LIB = -y ../rtl/verilog
-LOG = $(DMP).log
-VCD = $(DMP).vcd
-
-rv32i:	rv32i.v vvp clean
-
-rv32i.v:
-	@iverilog $(LIB) -tnull -M$(TMP).ls t5_sim.v
-	@uniq $(TMP).ls | sed 1d > $(TMP).fs
-	@iverilog -c$(TMP).fs -E -tnull -o $(TMP).v t5_sim.v
-
-vvp:
-	@iverilog -Wall -o $(TMP).vvp $(TMP).v
-	@time -p vvp -l $(LOG) $(TMP).vvp +randseed=$(RND) +dumpfile=$(VCD)
+rv32i:
+	@verilator -I$(mkfile_dir)../rtl/verilog/ -cc $(mkfile_dir)../rtl/verilog/t5_rv32i.v -exe $(mkfile_dir)t5_sim.cc --trace
+	@make -C $(mkfile_dir)obj_dir/ -f Vt5_rv32i.mk
+	@mv $(mkfile_dir)obj_dir/Vt5_rv32i $(mkfile_dir)/Vt5_rv32i.exe
 
 clean:
-	@rm -rf $(TMP)*
+	@rm -rf $(mkfile_dir)obj_dir/
 
 clear:
 	@rm -f *.log
