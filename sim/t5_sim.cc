@@ -13,13 +13,23 @@
 #include <algorithm>
 
 #define RAMSIZE 1<<20 // 64k words
-#define TRACE
+//#define TRACE
 
 // Command line arguments
 // 1 - BIN FILE
 // 2 - OUT FILE
 // 3 - BEGIN SIGNATURE
 // 4 - END SIGNATURE
+
+/* UART configuration */
+#define RISCV_QEMU_UART_BASE         0x40002000
+
+/* Timer configuration */
+#define RISCV_MTIME_BASE             0x40000000
+#define RISCV_MTIMECMP_BASE          0x40000008
+
+uint32_t mtime = 0;
+uint32_t mtimecmp = 0xFFFFFFFF;
 
 int main(int argc, char** argv, char** env) {
   Vt5_rv32i *cpu;
@@ -67,13 +77,16 @@ int main(int argc, char** argv, char** env) {
   // RUN
   uint32_t iadr, dadr, dat, wadr;
   std::cout << "START SIM" << std::endl;
-  for (cnt = 10; !Verilated::gotFinish() && cnt < 800000; cnt += 10) {
+  for (cnt = 10; !Verilated::gotFinish() && cnt < 1<<24; cnt += 10, mtime++) {
+    //    if (mtime >= mtimecmp) cpu->sexe = 1;
     cpu->sys_clk = 0;
     cpu->eval();
     // Rising Edge
     if (!cpu->sys_rst) {
       if (cpu->iwb_stb)
-	iadr = cpu->iwb_adr & 0x1FFFFFFF;
+	iadr = cpu->iwb_adr & 0x1FFFFFFF;      
+      if ((cpu->t5_rv32i__DOT__xbra >> 1) && (cpu->t5_rv32i__DOT__xbpc != 0x100))
+	std::cout << "PC " << "=>" << std::hex << (cpu->t5_rv32i__DOT__xbpc << 2) << std::endl;
       if (iadr << 2 >= buf.size()) {
 	std::cout << "ERR IADR " << std::hex << iadr << std::endl;
 	break;
@@ -103,10 +116,11 @@ int main(int argc, char** argv, char** env) {
 	    // IO
 	    dat = cpu->dwb_dto;	    
 	    
+	    std::cout << "IO " << std::hex << (dadr << 2) << "<=" << std::setfill('0') << std::setw(8) << std::hex << dat << std::endl;
 	    switch(dadr << 2) {
-	    case 0x40002000: std::cerr << (char)(dat & 0x0FF);
-	    default:	      
-	      std::cout << "IO " << std::hex << (dadr << 2) << "<=" << std::setfill('0') << std::setw(8) << std::hex << dat << std::endl;
+	    case RISCV_QEMU_UART_BASE: std::cerr << (char)(dat & 0x0FF); break;
+	    case RISCV_MTIME_BASE: mtime = dat; break;	      
+	    case RISCV_MTIMECMP_BASE: mtimecmp = dat; break;
 	    }
 	  }
 	}
@@ -116,7 +130,9 @@ int main(int argc, char** argv, char** env) {
 	    std::cout << "LD " << std::hex << (dadr << 2) << "=>" << std::setfill('0') << std::setw(8) << std::hex << cpu->dwb_dti <<std::endl;
 	  } else {
 	    switch(dadr << 2)	      {
-	    case 0x40000000: cpu->dwb_dti = cnt;
+	    case RISCV_MTIME_BASE: cpu->dwb_dti = mtime; break;
+	    case RISCV_MTIMECMP_BASE: cpu->dwb_dti = mtimecmp; break;	
+	    default: cpu->dwb_dti = 0; break;	      
 	    }
 	    
 	    std::cout << "IO " << std::hex << (dadr << 2) << "=>" << std::setfill('0') << std::setw(8) << std::hex << cpu->dwb_dti <<std::endl;	  }
