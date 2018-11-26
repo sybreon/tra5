@@ -67,8 +67,7 @@ int main(int argc, char** argv, char** env) {
   // RUN
   uint32_t iadr, dadr, dat, wadr;
   std::cout << "START SIM" << std::endl;
-  for (cnt = 10; !Verilated::gotFinish() && cnt < 400000; cnt += 10) {
-    //    std::cout << "PC " << std::hex << cpu->iwb_adr << std::endl;
+  for (cnt = 10; !Verilated::gotFinish() && cnt < 800000; cnt += 10) {
     cpu->sys_clk = 0;
     cpu->eval();
     // Rising Edge
@@ -85,7 +84,7 @@ int main(int argc, char** argv, char** env) {
 	if (cpu->dwb_wre && cpu->dwb_ack) {
 	  // RAM WRITE
 	  if (dadr << 2 < buf.size()) {
-	    
+	    if (dadr == 0x400) break; // COMPLIANCE TEST END
 	    dat = ram[dadr];
 	    
 	    switch(cpu->dwb_sel) {
@@ -154,11 +153,6 @@ int main(int argc, char** argv, char** env) {
     tfp->dump(cnt+1);
     tfp->flush();
 #endif
-    
-    if (cpu->iwb_dat == 0x073) {
-      std::cout << "ECALL END" << std::endl;
-      //break;
-    }
   }
   
   // DUMP SIGNATURE
