@@ -156,7 +156,7 @@ module t5_aslu (/*AUTOARG*/
    // CSR
    reg [XLEN-1:0] xcsr;
    reg [31:0] 	  rcsr, wcsr;   
-   
+		  
    wire [31:0] 	  mask = (dfn3[14]) ? {27'd0,dcp2[19:15]} : dop1;   
    wire 	  wecsr = dcsr;
 
@@ -175,6 +175,7 @@ module t5_aslu (/*AUTOARG*/
      CSR_MEDELEG = 12'h302,
      CSR_MIDELEG = 12'h303,
      CSR_MIE = 12'h304,
+     CSR_MIP = 12'h344,
      CSR_MTVEC = 12'h305,
      CSR_MTVAL = 12'h343,
      CSR_MCAUSE = 12'h342,
@@ -186,6 +187,8 @@ module t5_aslu (/*AUTOARG*/
    reg [3:0]  mcause;   
    reg [31:0] medeleg, mtvec, mtval;
    reg [31:0] mscratch;  // FIXME: hart-local
+   reg 	      mie, mpie;
+   reg [31:0] mip;   
    
    // WRITE CSR
    always @(posedge sclk)
@@ -200,11 +203,12 @@ module t5_aslu (/*AUTOARG*/
 	if (dcp2[31:20] == CSR_MEDELEG) medeleg <= wcsr;
 	if (dcp2[31:20] == CSR_MSCRATCH) mscratch <= wcsr;
 	if (dcp2[31:20] == CSR_MTVEC) mtvec <= wcsr;
+//	if (dcp2[31:20] == CSR_MIE) mip <= wcsr;
      end
    
    // READ CSR
    always @(/*AUTOSENSE*/dcp2 or dhart or mcause or medeleg or mepc
-	    or mscratch or mtval or mtvec)
+	    or mie or mpie or mscratch or mtval or mtvec)
      case (dcp2[31:20])
        CSR_MHARTID: rcsr = {30'd0,dhart};
        CSR_MISA: rcsr = 32'h40000100;
@@ -213,7 +217,10 @@ module t5_aslu (/*AUTOARG*/
        CSR_MEPC: rcsr = {mepc[31:2], 2'd0};
        CSR_MTVAL: rcsr = mtval;
        CSR_MTVEC: rcsr = mtvec;
-       CSR_MCAUSE: rcsr = {28'd0,mcause};       
+       CSR_MIE,
+       CSR_MIP : rcsr = 32'h00000080; // timer interrupt       
+       CSR_MCAUSE: rcsr = {28'd0,mcause};
+       CSR_MSTATUS: rcsr = {21'd3,3'o0,mpie,3'o0,mie,3'o0};       
        default: rcsr = {(XLEN){1'b0}};	  
      endcase // case (dop2[31:20])
 
@@ -312,6 +319,7 @@ module t5_aslu (/*AUTOARG*/
    wire 	  wtval = (dcp2[31:20] == CSR_MTVAL) & wecsr;   
    wire 	  wepc = (dcp2[31:20] == CSR_MEPC) & wecsr;
    wire 	  wcause =  (dcp2[31:20] == CSR_MCAUSE) & wecsr;
+   wire 	  wstatus = (dcp2[31:20] == CSR_MSTATUS) & wecsr;
    
    always @(posedge sclk)
      if (srst) begin
@@ -319,11 +327,19 @@ module t5_aslu (/*AUTOARG*/
 	// Beginning of autoreset for uninitialized flops
 	mcause <= 4'h0;
 	mepc <= 32'h0;
+	mie <= 1'h0;
+	mpie <= 1'h0;
 	mtval <= 32'h0;
 	xexc <= 1'h0;
 	xoff <= 2'h0;
 	// End of automatics
      end else if (sena) begin
+	case({xbra,wstatus})
+	  3'b110: {mpie,mie} <= {mie,1'b0};
+	  3'b010: {mpie,mie} <= {1'b1,mpie};	  
+	  default: {mpie, mie} <= {wcsr[7],wcsr[3]};	  
+	endcase // case ()	
+	
 	case({&xbra|wepc,&xstb|wepc})
 	  2'b11: mepc <= wcsr;	  
 	  2'b10,2'b01: mepc <= {xepc, 2'd0};
@@ -331,10 +347,10 @@ module t5_aslu (/*AUTOARG*/
 	endcase // case (xbra)
 
 	case({xexc,&xbra|wcause,&xstb|wcause})
-	  3'b011: mcause <= wcsr[3:0];	  
-	  3'b010: mcause <= 4'h0;
-	  3'b110: mcause <= 4'hB;	  
-	  3'b001: mcause <= {2'o1, xwre, 1'b0};	  
+	  3'b011: mcause <= wcsr[3:0]; // write	  
+	  3'b010: mcause <= 4'h0; // misaligned bra/jmp
+	  3'b110: mcause <= 4'hB; // ecall	  
+	  3'b001: mcause <= {2'o1, xwre, 1'b0};	// misalign load/store
 	  default: mcause <= mcause;	  
 	endcase // case (xbra)
 
@@ -345,7 +361,7 @@ module t5_aslu (/*AUTOARG*/
 	endcase // case (xbra)
 
 	xoff <= (djmp) ? {xadr[1],1'b0} : xadr[1:0];
-	xexc <= dexc;	
+	xexc <= dexc;
      end
    
 endmodule // t5_aslu

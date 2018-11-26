@@ -34,10 +34,11 @@ module t5_sysc(/*AUTOARG*/
    input  dwb_ack;   
 
    assign sclk = sys_clk;
-   assign sena = sys_ena & !(xstb[1] ^ dwb_ack);
-
    reg [3:0] rst;
    assign srst = rst[3];
+
+   reg 	     ena;
+   assign sena = sys_ena & ena & !(xstb[1] ^ dwb_ack);   
    
    always @(posedge sys_clk)
      if (sys_rst) begin
@@ -45,6 +46,16 @@ module t5_sysc(/*AUTOARG*/
 	/*AUTORESET*/
      end else begin
 	rst <= {rst[2:0],sys_rst};	
+     end
+
+   always @(posedge sys_clk)
+     if (srst) begin
+	/*AUTORESET*/
+	// Beginning of autoreset for uninitialized flops
+	ena <= 1'h0;
+	// End of automatics
+     end else begin
+	ena <= 1'b1;	
      end
    
 endmodule // t5_sysc
