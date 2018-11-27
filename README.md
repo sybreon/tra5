@@ -64,6 +64,30 @@ $ ./t5_build.sh
 
 The 'console' output is piped to the *.out files - synchronization.out and philosophers.out.
 
+There is a modification made to the Philosophers application to generate a random number using a software LFSR instead:
+
+```
+        static u16_t lfsr = (u16_t)MAGIC;
+        u8_t lsb = lfsr & 1;
+        lfsr >>= 1;
+        if (lsb) lfsr ^= 0xB400u;
+        return (lfsr & 0xF) + 1;
+```
+
+There is a problem with the philosophers sample application. It runs for a while then crashes due to the use of an unimplemented WFI instruction - in k_cpu_idle(). This triggers a break, which results in the following error message sent to the console, for each thread:
+
+```
+Exception cause Breakpoint (3)
+Current thread ID = 0x00010300
+Faulting instruction address = 0xb40
+  ra: 0x34c8  gp: 0x0  tp: 0x0  t0: 0x0
+  t1: 0x0  t2: 0x0  t3: 0x0  t4: 0x0
+  t5: 0x0  t6: 0x0  a0: 0x0  a1: 0x0
+  a2: 0x0  a3: 0x0  a4: 0x0  a5: 0x1800
+  a6: 0x0  a7: 0x0
+Fatal fault in essential thread! Spinning...
+```
+
 ## Hardware
 
 Although the CPU has been designed in 100% fully-synthesisable Verilog, it has not been tested in hardware. 
