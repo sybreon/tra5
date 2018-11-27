@@ -1,0 +1,39 @@
+# Kconfig - general configuration options
+
+#
+# Copyright (c) 2014-2015 Wind River Systems, Inc.
+# Copyright (c) 2016 Intel Corporation
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# Include these first so that any properties (e.g. defaults) below can be
+# overriden in *.defconfig files (by defining symbols in multiple locations).
+# After merging all the symbol definitions, Kconfig picks the first property
+# (e.g. the first default) with a satisfied condition.
+#
+# Board defaults should be parsed before SoC defaults, because boards usually
+# overrides SoC values.
+#
+# Note: $ENV_VAR_ARCH and $ENV_VAR_BOARD_DIR might be glob patterns.
+source "$ENV_VAR_BOARD_DIR/Kconfig.defconfig"
+source "arch/$ENV_VAR_ARCH/soc/*/Kconfig.defconfig"
+
+
+source "arch/Kconfig"
+
+source "kernel/Kconfig"
+
+source "dts/Kconfig"
+
+source "drivers/Kconfig"
+
+source "misc/Kconfig"
+
+source "lib/Kconfig"
+
+source "subsys/Kconfig"
+
+source "ext/Kconfig"
+
+#source "tests/Kconfig"

@@ -1,0 +1,30 @@
+TARGET_SIM ?= $(ROOTDIR)/../sim/Vt5_rv32i.exe
+ifeq ($(shell command -v $(TARGET_SIM) 2> /dev/null),)
+    $(error Target simulator executable '$(TARGET_SIM)` not found)
+endif
+
+RISCV_PREFIX   ?= riscv32-unknown-elf-
+RISCV_GCC      ?= $(RISCV_PREFIX)gcc
+RISCV_OBJDUMP  ?= $(RISCV_PREFIX)objdump
+RISCV_OBJCOPY  ?= $(RISCV_PREFIX)objcopy
+RISCV_NM  ?= $(RISCV_PREFIX)nm
+RISCV_GCC_OPTS ?= -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles
+
+ALPHA=$(RISCV_NM) -fsysv $(work_dir_isa)/$< | grep "begin_sign" | cut -f2 -d"|"
+OMEGA=$(RISCV_NM) -fsysv $(work_dir_isa)/$< | grep "end_sign" | cut -f2 -d"|"
+
+RUN_TARGET=\
+    $(TARGET_SIM)  $(work_dir_isa)/$<.bin \
+        $(work_dir_isa)/$(*)_signature.output \
+	$(shell $(ALPHA)) $(shell $(OMEGA))
+
+
+COMPILE_TARGET=\
+	$$(RISCV_GCC) $(2) $$(RISCV_GCC_OPTS) \
+		-I$(ROOTDIR)/riscv-test-env/ \
+		-I$(ROOTDIR)/riscv-test-env/p/ \
+		-I$(ROOTDIR)/riscv-target/$(RISCV_TARGET)/ \
+		-T$(ROOTDIR)/riscv-test-env/p/tra5.ld $$< \
+		-o $(work_dir_isa)/$$@; \
+	$$(RISCV_OBJDUMP) -D $(work_dir_isa)/$$@ > $(work_dir_isa)/$$@.objdump; \
+	$$(RISCV_OBJCOPY) -O binary $(work_dir_isa)/$$@ $(work_dir_isa)/$$@.bin

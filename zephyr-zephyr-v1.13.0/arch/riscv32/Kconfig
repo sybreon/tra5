@@ -1,0 +1,68 @@
+#
+# Copyright (c) 2016 Jean-Paul Etienne <fractalclone@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+choice
+	prompt "RISCV32 configuration selection"
+	depends on RISCV32
+	source "arch/riscv32/soc/*/Kconfig.soc"
+endchoice
+
+menu "RISCV32 Options"
+	depends on RISCV32
+
+# Include these first so that any properties (e.g. defaults) below can be
+# overriden (by defining symbols in multiple locations)
+source "arch/riscv32/soc/*/Kconfig"
+
+config ARCH
+	string
+	default "riscv32"
+
+config ARCH_DEFCONFIG
+	string
+	default "arch/riscv32/defconfig"
+
+menu "RISCV32 Processor Options"
+
+config INCLUDE_RESET_VECTOR
+	bool "Include Reset vector"
+	help
+	  Include the reset vector stub that inits CPU and then jumps to __start
+
+config RISCV_SOC_CONTEXT_SAVE
+	bool "Enable SOC-based context saving in IRQ handler"
+	help
+	  Enable SOC-based context saving, for SOCS which require saving of
+	  extra registers when entering an interrupt/exception
+
+config RISCV_SOC_INTERRUPT_INIT
+	bool "Enable SOC-based interrupt initialization"
+	help
+	  Enable SOC-based interrupt initialization
+	  (call soc_interrupt_init, within _IntLibInit when enabled)
+
+config RISCV_GENERIC_TOOLCHAIN
+	bool "Compile using generic riscv32 toolchain"
+	default y
+	help
+	  Compile using generic riscv32 toolchain.
+	  Allow SOCs that have custom extended riscv ISA to still
+	  compile with generic riscv32 toolchain.
+
+config RISCV_HAS_CPU_IDLE
+	bool "Does SOC has CPU IDLE instruction"
+	help
+	  Does SOC has CPU IDLE instruction
+
+config GEN_ISR_TABLES
+	default y
+
+config GEN_IRQ_VECTOR_TABLE
+	default n
+
+endmenu
+
+endmenu
