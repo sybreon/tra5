@@ -136,13 +136,12 @@ static void print_phil_state(int id, const char *fmt, s32_t delay)
 
 static s32_t get_random_delay(int id, int period_in_ms)
 {
-	return 1;
+	// Borrowed from Wikipedia article on LFSR
 	static u16_t lfsr = (u16_t)MAGIC;
 	u8_t lsb = lfsr & 1;
         lfsr >>= 1;
-        if (lsb)
-            lfsr ^= 0xB400u;
-	return lfsr & 0xF;
+        if (lsb) lfsr ^= 0xB400u;
+	return (lfsr & 0xF) + 1;
 	/*
 	 * The random delay is unit-less, and is based on the philosopher's ID
 	 * and the current uptime to create some pseudo-randomness. It produces
