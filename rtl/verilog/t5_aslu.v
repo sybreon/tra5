@@ -263,7 +263,7 @@ module t5_aslu (/*AUTOARG*/
 	// ADDRESS CALC
 	case ({dexc,dcp2[21]})
 	  2'b11: xbpc <= mepc[31:2]; // RET
-	  2'b10: xbpc <= 30'hX; // ECALL FIXME:
+//	  2'b10: xbpc <= xadr:
 	  default: xbpc <= {xadr[31:2]};
 	endcase // case ({dexc,dcp2[21]})
 	
@@ -315,11 +315,13 @@ module t5_aslu (/*AUTOARG*/
    reg [1:0]	  xbra;
    reg [1:0] 	  xoff;
    reg 		  xexc;
+
    
    wire 	  wtval = (dcp2[31:20] == CSR_MTVAL) & wecsr;   
    wire 	  wepc = (dcp2[31:20] == CSR_MEPC) & wecsr;
    wire 	  wcause =  (dcp2[31:20] == CSR_MCAUSE) & wecsr;
    wire 	  wstatus = (dcp2[31:20] == CSR_MSTATUS) & wecsr;
+   wire 	  xbrk = xbpc[20];
    
    always @(posedge sclk)
      if (srst) begin
@@ -349,7 +351,7 @@ module t5_aslu (/*AUTOARG*/
 	case({xexc,&xbra|wcause,&xstb|wcause})
 	  3'b011: mcause <= wcsr[3:0]; // write	  
 	  3'b010: mcause <= 4'h0; // misaligned bra/jmp
-	  3'b110: mcause <= 4'hB; // ecall	  
+	  3'b110: mcause <= {!xbrk,3'o3}; // ecall/ebreak
 	  3'b001: mcause <= {2'o1, xwre, 1'b0};	// misalign load/store
 	  default: mcause <= mcause;	  
 	endcase // case (xbra)

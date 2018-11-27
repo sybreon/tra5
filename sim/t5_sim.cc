@@ -77,7 +77,7 @@ int main(int argc, char** argv, char** env) {
   // RUN
   uint32_t iadr, dadr, dat, wadr;
   std::cout << "START SIM" << std::endl;
-  for (cnt = 10; !Verilated::gotFinish() && cnt < 1<<24; cnt += 10, mtime++) {
+  for (cnt = 10; !Verilated::gotFinish() && cnt < 1<<23; cnt += 10, mtime++) {
     //    if (mtime >= mtimecmp) cpu->sexe = 1;
     cpu->sys_clk = 0;
     cpu->eval();
