@@ -20,16 +20,20 @@ Work environment uses Ubuntu 18.04 LTS. The software packages are installed dire
 
 The RISC-V compiler is built directly from https://github.com/riscv/riscv-gnu-toolchain using the following configuration:
 
+```
 $ ./configure --prefix=/opt/rv32i --with-arch=rv32i --with-abi=ilp32
 $ make
+```
 
 ## Verilator
 
 The Verilator model *MUST* first be built before running any of the tests.
 To build the simulation model with Verilator, do the following:
 
+```
 $ cd sim/
 $ make
+```
 
 This will produce an executable - "Vt5_rv32i.exe" in the *sim/* directory that is used for the rest of the tests.
 
@@ -51,8 +55,10 @@ make RISCV_TARGET=tra5 RISCV_DEVICE=rv32i RISCV_ISA=rv32i RISCV_PREFIX=riscv32-u
 
 To build and run the tests:
 
+```
 $ cd riscv-compliance-master/
 $ ./t5_build.sh
+```
 
 It should pass ALL the tests.
 
@@ -71,8 +77,10 @@ export CROSS_COMPILE=/opt/rv32i/bin/riscv32-unknown-elf-
 
 To build and run the tests:
 
+```
 $ cd zephyr-zephyr-v1.13.0/
 $ ./t5_build.sh
+```
 
 The 'console' output is piped to the *.out files - synchronization.out and philosophers.out.
 
