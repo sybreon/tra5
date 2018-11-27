@@ -43,6 +43,12 @@ The TRA5 processor core passes ALL the compliance tests ad-verbatim, without any
 The Makefile was modified to be able to run the automated tests using the "Vt5_rv32i.exe" instead of some other simulator e.g. spike.
 The linker script was modified to install the reset vector code at address 0x00000000 instead of 0x80000000.
 
+Before building and running the tests, modify the RISCV_PREFIX variable in the following "t5_build.sh" file to point to the RISC-V toolchain.
+
+```
+make RISCV_TARGET=tra5 RISCV_DEVICE=rv32i RISCV_ISA=rv32i RISCV_PREFIX=riscv32-unknown-elf-
+```
+
 To build and run the tests:
 
 $ cd riscv-compliance-master/
@@ -56,6 +62,12 @@ The TRA5 core has some limitations with the RTOS tests.
 
 1. It uses IMT. Two lines of assembly was inserted into vectors.S to lock out all threads except for Thread0. It is possible to modify Zephyr to exploit all 4 hardware threads but this was not done/tested.
 2. It lacks hardware timers, which means that cooperative multi-tasking is required for now. Furthermore, any timing based delay will face issues. 
+
+Before building and running the tests, modify the CROSS_COMPILE variable in the following "t5_build.sh" file to point it to the RISC-V toolchain.
+
+```
+export CROSS_COMPILE=/opt/rv32i/bin/riscv32-unknown-elf-
+```
 
 To build and run the tests:
 
