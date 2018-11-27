@@ -18,7 +18,8 @@ module t5_inst(/*AUTOARG*/
    // Outputs
    fpc, iwb_adr, iwb_wre, iwb_stb, iwb_sel, fhart, mhart, dhart,
    // Inputs
-   xbpc, xpc, xbra, xsel, xstb, sclk, sena, srst, mtvec, mepc
+   xbpc, xpc, xbra, xsel, xstb, sclk, sena, srst, sys_rst, mtvec,
+   mepc
    );
 
    parameter XLEN = 32;
@@ -36,7 +37,7 @@ module t5_inst(/*AUTOARG*/
    input [3:0] 	 xsel;
    input [1:0]	 xstb;
    
-   input 	 sclk, sena, srst;
+   input 	 sclk, sena, srst, sys_rst;
    input [31:0]  mtvec,mepc;   
 
    assign iwb_sel = 4'hF;
@@ -47,13 +48,13 @@ module t5_inst(/*AUTOARG*/
    wire [1:0] 	     whart = {hart[0],!hart[1]};   
    assign mhart = hart;   
    always @(posedge sclk)     
-     if (srst) begin
+     if (sys_rst) begin
 	dhart <= 2'h3;	
 	/*AUTORESET*/
 	// Beginning of autoreset for uninitialized flops
 	hart <= 2'h0;
 	// End of automatics
-     end else if (sena) begin
+     end else if (sena|srst) begin
 	hart <= whart; // johnson counter to simplify resource usage
 	dhart <= ~whart;	
      end

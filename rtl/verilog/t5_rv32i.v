@@ -43,7 +43,7 @@ module t5_rv32i (/*AUTOARG*/
    input		sexe;			// To ctrl of t5_ctrl.v
    input		sys_clk;		// To csys of t5_sysc.v
    input		sys_ena;		// To csys of t5_sysc.v
-   input		sys_rst;		// To csys of t5_sysc.v
+   input		sys_rst;		// To csys of t5_sysc.v, ...
    // End of automatics
    /*AUTOWIRE*/
    // Beginning of automatic wires (for undeclared instantiated-module outputs)
@@ -164,6 +164,7 @@ module t5_rv32i (/*AUTOARG*/
 	 .sclk				(sclk),
 	 .sena				(sena),
 	 .srst				(srst),
+	 .sys_rst			(sys_rst),
 	 .mtvec				(mtvec[31:0]),
 	 .mepc				(mepc[31:0]));
 
